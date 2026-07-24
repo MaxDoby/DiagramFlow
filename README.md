@@ -1,96 +1,179 @@
-# DiagramsFlowProject
+# DiagramFlow
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+DiagramFlow is a web application for creating, editing, sharing, and collaborating on diagrams in real time.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+The project is developed as an MVP using the technical stack and requirements provided by the mentor.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Architecture
 
-## Run tasks
+DiagramFlow uses a modular monolith architecture.
 
-To run tasks with Nx use:
+The backend is deployed as a single NestJS application, while the business logic is separated into modules with explicit responsibilities.
 
-```sh
-npx nx <target> <project-name>
+Planned backend modules:
+
+- Auth
+- Users
+- Diagrams
+- Editor
+- Collaboration
+- Files
+
+### Why a modular monolith?
+
+The MVP features are strongly connected:
+
+- collaboration modifies diagrams;
+- sharing controls editing permissions;
+- history stores editor operations;
+- autosave updates the current diagram state.
+
+Keeping these operations inside one backend allows us to use local service calls and PostgreSQL transactions without introducing distributed transactions or network communication between backend services.
+
+Compared with microservices, the modular monolith provides:
+
+- simpler deployment;
+- simpler debugging and testing;
+- consistent database transactions;
+- lower infrastructure complexity;
+- clear module boundaries that can be extracted later if scaling requires it.
+
+## Repository structure
+
+```text
+apps/
+├── web/          React frontend
+└── api/          NestJS backend
+
+libs/
+└── contracts/    Shared Zod contracts
+
+prisma/
+└── schema.prisma
+
+compose.yaml
 ```
 
-For example:
+The repository is an Nx monorepo containing two applications:
 
-```sh
-npx nx build myproject
+- `web` — the React client;
+- `api` — the NestJS modular monolith.
+
+The shared `contracts` library will contain Zod schemas for HTTP and Socket.IO payloads.
+
+## Data flow
+
+A persistent editor modification will follow this flow:
+
+```text
+React Flow interaction
+→ frontend creates an operation
+→ Socket.IO sends the operation
+→ backend validates authentication and permissions
+→ Prisma stores the operation in PostgreSQL
+→ backend broadcasts the accepted operation
+→ connected clients update their canvas
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+Temporary drag previews will be transmitted through Socket.IO but will not be stored for every mouse movement.
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Technology stack
 
-## Add new projects
+### Frontend
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+- React
+- TypeScript
+- React Flow
+- TailwindCSS
+- Zustand
+- React Query
 
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
+### Backend
+
+- NestJS
+- Prisma ORM
+- PostgreSQL
+- Redis
+- Socket.IO
+- Zod
+
+### Infrastructure
+
+- Nx
+- Docker
+- Docker Compose
+- Nginx
+- GitHub Actions
+
+## Local development
+
+Install dependencies:
+
+```powershell
+npm install
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+Create the local environment file:
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
-
-# Generate a library
-npx nx g @nx/react:lib some-lib
+```powershell
+Copy-Item .env.example .env
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+Start PostgreSQL and Redis:
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+```powershell
+docker compose up -d
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+Generate Prisma Client:
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+```powershell
+npx prisma generate
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Start the backend:
 
-## Install Nx Console
+```powershell
+npx nx serve api
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+Start the frontend in another terminal:
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```powershell
+npx nx serve web
+```
 
-## Useful links
+## Verification
 
-Learn more:
+Run lint, tests, and production builds:
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```powershell
+npx nx run-many -t lint test build --all
+```
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Validate the Prisma schema:
+
+```powershell
+npx prisma validate
+```
+
+Validate Docker Compose:
+
+```powershell
+docker compose config
+```
+
+## Current status
+
+The initial project foundation is configured:
+
+- Nx monorepo;
+- React application;
+- NestJS application;
+- shared contracts library;
+- PostgreSQL and Redis containers;
+- Prisma configuration;
+- Zod dependency;
+- lint, tests, and production builds.
+
+The next implementation milestone is authentication.
