@@ -11,6 +11,7 @@ import type {
   RegisterInput,
   RegisterResponse,
   LoginResponse,
+  RefreshResponse,
 } from '@diagram-flow/contracts';
 import { Prisma } from '../../../generated/prisma/client';
 import { hash, compare } from 'bcrypt';
@@ -18,6 +19,12 @@ import { JwtService } from '@nestjs/jwt';
 
 type LoginServiceResult = {
   response: LoginResponse;
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
+};
+
+type RefreshServiceResult = {
+  response: RefreshResponse;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
 };
@@ -31,18 +38,24 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  private async createRefreshSession(
-    userId: string,
-  ): Promise<{ token: string; expiresAt: Date }> {
+  private generateRefreshTokenData(): {
+    token: string;
+    tokenHash: string;
+    expiresAt: Date;
+  } {
     const token = randomBytes(32).toString('base64url');
-
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-
+    const tokenHash = this.hashRefreshToken(token);
     const ttlDays = this.configService.getOrThrow<number>(
       'REFRESH_TOKEN_TTL_DAYS',
     );
-
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
+    return { token, tokenHash, expiresAt };
+  }
+
+  private async createRefreshSession(
+    userId: string,
+  ): Promise<{ token: string; expiresAt: Date }> {
+    const { token, tokenHash, expiresAt } = this.generateRefreshTokenData();
 
     await this.prisma.refreshSession.create({
       data: {
@@ -55,6 +68,11 @@ export class AuthService {
     return { token, expiresAt };
   }
 
+  private hashRefreshToken(token: string): string {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    return tokenHash;
+  }
+
   private async createAccessToken(user: {
     id: string;
     email: string;
@@ -63,6 +81,70 @@ export class AuthService {
       sub: user.id,
       email: user.email,
     });
+  }
+
+  private async findActiveRefreshSession(token: string) {
+    const hashToken = this.hashRefreshToken(token);
+    const activeRefreshSession = await this.prisma.refreshSession.findUnique({
+      where: {
+        tokenHash: hashToken,
+      },
+      select: {
+        id: true,
+        expiresAt: true,
+        revokedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !activeRefreshSession ||
+      activeRefreshSession.revokedAt !== null ||
+      activeRefreshSession.expiresAt <= new Date()
+    )
+      throw new UnauthorizedException('Invalid refresh token');
+
+    return activeRefreshSession;
+  }
+
+  private async rotateRefreshSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<{ token: string; expiresAt: Date }> {
+    const { token, tokenHash, expiresAt } = this.generateRefreshTokenData();
+    const timeOfGeneration = new Date();
+
+    await this.prisma.$transaction(async (transaction) => {
+      const revokeResult = await transaction.refreshSession.updateMany({
+        where: {
+          id: sessionId,
+          revokedAt: null,
+          expiresAt: {
+            gt: timeOfGeneration,
+          },
+        },
+        data: { revokedAt: timeOfGeneration },
+      });
+
+      if (revokeResult.count !== 1) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      await transaction.refreshSession.create({
+        data: {
+          userId,
+          tokenHash,
+          expiresAt,
+        },
+      });
+    });
+
+    return { token, expiresAt };
   }
 
   private async validateCredentials(input: LoginInput) {
@@ -86,6 +168,30 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
 
     return user;
+  }
+
+  async refresh(refreshToken: string): Promise<RefreshServiceResult> {
+    const activeSession = await this.findActiveRefreshSession(refreshToken);
+
+    const rotatedSession = await this.rotateRefreshSession(
+      activeSession.id,
+      activeSession.user.id,
+    );
+
+    const accessToken = await this.createAccessToken(activeSession.user);
+
+    const accessTokenExpiresInSeconds = this.configService.getOrThrow<number>(
+      'JWT_ACCESS_TTL_SECONDS',
+    );
+
+    return {
+      response: {
+        accessToken,
+        accessTokenExpiresInSeconds,
+      },
+      refreshToken: rotatedSession.token,
+      refreshTokenExpiresAt: rotatedSession.expiresAt,
+    };
   }
 
   async login(input: LoginInput): Promise<LoginServiceResult> {
