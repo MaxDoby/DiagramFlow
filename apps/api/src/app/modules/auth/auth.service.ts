@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
@@ -16,6 +17,7 @@ import type {
 import { Prisma } from '../../../generated/prisma/client';
 import { hash, compare } from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { EmailVerificationService } from './email-verification.service';
 
 type LoginServiceResult = {
   response: LoginResponse;
@@ -32,10 +34,12 @@ type RefreshServiceResult = {
 @Injectable()
 export class AuthService {
   private static readonly PASSWORD_SALT_ROUNDS = 12;
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailVerificationService: EmailVerificationService,
   ) {}
 
   private generateRefreshTokenData(): {
@@ -239,6 +243,17 @@ export class AuthService {
           emailConfirmedAt: true,
         },
       });
+
+      try {
+        await this.emailVerificationService.issueVerificationCode(
+          newUser.email,
+        );
+      } catch (error: unknown) {
+        this.logger.error(
+          'Failed to send email verification code',
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
 
       return {
         id: newUser.id,

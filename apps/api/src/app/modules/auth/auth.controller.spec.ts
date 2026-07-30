@@ -4,11 +4,16 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { EmailVerificationService } from './email-verification.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authServiceMock: {
     refresh: jest.Mock;
+  };
+  let emailVerificationServiceMock: {
+    confirmEmail: jest.Mock;
+    resendVerificationCode: jest.Mock;
   };
   let configServiceMock: {
     get: jest.Mock;
@@ -18,7 +23,10 @@ describe('AuthController', () => {
     authServiceMock = {
       refresh: jest.fn(),
     };
-
+    emailVerificationServiceMock = {
+      confirmEmail: jest.fn(),
+      resendVerificationCode: jest.fn(),
+    };
     configServiceMock = {
       get: jest.fn(),
     };
@@ -29,6 +37,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: authServiceMock,
+        },
+        {
+          provide: EmailVerificationService,
+          useValue: emailVerificationServiceMock,
         },
         {
           provide: ConfigService,
@@ -97,5 +109,37 @@ describe('AuthController', () => {
       },
     );
     expect(result).toEqual(serviceResult.response);
+  });
+
+  it('delegates email confirmation to the verification service', async () => {
+    emailVerificationServiceMock.confirmEmail.mockResolvedValue(undefined);
+
+    await expect(
+      controller.confirmEmail({
+        email: 'student@diagramflow.test',
+        code: '123456',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(emailVerificationServiceMock.confirmEmail).toHaveBeenCalledWith(
+      'student@diagramflow.test',
+      '123456',
+    );
+  });
+
+  it('delegates resend verification to the verification service', async () => {
+    emailVerificationServiceMock.resendVerificationCode.mockResolvedValue(
+      undefined,
+    );
+
+    await expect(
+      controller.resendVerification({
+        email: 'student@diagramflow.test',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(
+      emailVerificationServiceMock.resendVerificationCode,
+    ).toHaveBeenCalledWith('student@diagramflow.test');
   });
 });

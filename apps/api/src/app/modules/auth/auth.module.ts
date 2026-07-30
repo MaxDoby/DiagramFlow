@@ -4,11 +4,16 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
 import { AuthController } from './auth.controller';
+import { RedisModule } from '../../infrastructure/redis/redis.module';
+import { EmailVerificationService } from './email-verification.service';
+import { MailModule } from '../../infrastructure/mail/mail.module';
 
 @Module({
-  providers: [AuthService],
+  providers: [AuthService, EmailVerificationService],
   imports: [
     PrismaModule,
+    RedisModule,
+    MailModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

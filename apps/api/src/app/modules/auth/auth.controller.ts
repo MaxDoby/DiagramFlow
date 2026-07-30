@@ -16,16 +16,22 @@ import {
   LoginInput,
   LoginResponse,
   RefreshResponse,
+  confirmEmailSchema,
+  ConfirmEmailInput,
+  resendEmailVerificationSchema,
+  ResendEmailVerificationInput,
 } from '@diagram-flow/contracts';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import type { Response, Request } from 'express';
+import { EmailVerificationService } from './email-verification.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly emailVerificationService: EmailVerificationService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -49,6 +55,24 @@ export class AuthController {
     input: RegisterInput,
   ): Promise<RegisterResponse> {
     return this.authService.register(input);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('confirm-email')
+  confirmEmail(
+    @Body(new ZodValidationPipe(confirmEmailSchema))
+    input: ConfirmEmailInput,
+  ): Promise<void> {
+    return this.emailVerificationService.confirmEmail(input.email, input.code);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('resend-verification')
+  resendVerification(
+    @Body(new ZodValidationPipe(resendEmailVerificationSchema))
+    input: ResendEmailVerificationInput,
+  ): Promise<void> {
+    return this.emailVerificationService.resendVerificationCode(input.email);
   }
 
   @HttpCode(HttpStatus.OK)
