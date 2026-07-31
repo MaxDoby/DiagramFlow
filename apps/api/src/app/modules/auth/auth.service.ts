@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
@@ -18,6 +19,7 @@ import { Prisma } from '../../../generated/prisma/client';
 import { hash, compare } from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { EmailVerificationService } from './email-verification.service';
+import { PASSWORD_SALT_ROUNDS } from '../../common/constants/security.constants';
 
 type LoginServiceResult = {
   response: LoginResponse;
@@ -33,7 +35,6 @@ type RefreshServiceResult = {
 
 @Injectable()
 export class AuthService {
-  private static readonly PASSWORD_SALT_ROUNDS = 12;
   private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly prisma: PrismaService,
@@ -171,6 +172,10 @@ export class AuthService {
     if (!user || !passwordMatches)
       throw new UnauthorizedException('Invalid email or password.');
 
+    if (user.emailConfirmedAt === null) {
+      throw new ForbiddenException('Email address is not confirmed.');
+    }
+
     return user;
   }
 
@@ -226,10 +231,7 @@ export class AuthService {
   }
 
   async register(input: RegisterInput): Promise<RegisterResponse> {
-    const passwordHash = await hash(
-      input.password,
-      AuthService.PASSWORD_SALT_ROUNDS,
-    );
+    const passwordHash = await hash(input.password, PASSWORD_SALT_ROUNDS);
 
     try {
       const newUser = await this.prisma.user.create({

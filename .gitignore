@@ -52,3 +52,5 @@ vitest.config.*.timestamp*
 .env.*
 !.env.example
 /apps/api/src/generated/prisma/
+# User uploads
+/uploads/

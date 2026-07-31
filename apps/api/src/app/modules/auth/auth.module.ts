@@ -7,9 +7,10 @@ import { AuthController } from './auth.controller';
 import { RedisModule } from '../../infrastructure/redis/redis.module';
 import { EmailVerificationService } from './email-verification.service';
 import { MailModule } from '../../infrastructure/mail/mail.module';
+import { AccessTokenGuard } from './guards/access-token.guard';
 
 @Module({
-  providers: [AuthService, EmailVerificationService],
+  providers: [AuthService, EmailVerificationService, AccessTokenGuard],
   imports: [
     PrismaModule,
     RedisModule,
@@ -25,5 +26,6 @@ import { MailModule } from '../../infrastructure/mail/mail.module';
     }),
   ],
   controllers: [AuthController],
+  exports: [AccessTokenGuard, JwtModule],
 })
 export class AuthModule {}

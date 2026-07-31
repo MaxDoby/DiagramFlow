@@ -16,6 +16,7 @@ export const environmentSchema = z.looseObject({
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive().max(65535),
   MAIL_FROM: z.email(),
+  UPLOADS_ROOT: z.string().trim().min(1),
 });
 
 export const validateEnvironment = (config: Record<string, unknown>) => {

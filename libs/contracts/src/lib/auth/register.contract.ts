@@ -1,14 +1,9 @@
 import * as z from 'zod';
+import { strongPasswordSchema } from '../common/password.schema';
 
 export const registerSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email()),
-  password: z
-    .string()
-    .min(8)
-    .max(72)
-    .refine((password) => new TextEncoder().encode(password).length <= 72, {
-      message: 'Password must not exceed 72 bytes',
-    }),
+  password: strongPasswordSchema,
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

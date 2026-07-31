@@ -1,14 +1,10 @@
 import * as z from 'zod';
+import { loginPasswordSchema } from '../common/password.schema';
+import { avatarUrlSchema } from '../common/avatar-url.schema';
 
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email()),
-  password: z
-    .string()
-    .min(1)
-    .max(72)
-    .refine((password) => new TextEncoder().encode(password).length <= 72, {
-      message: 'Password must not exceed 72 bytes',
-    }),
+  password: loginPasswordSchema,
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -20,7 +16,7 @@ export const loginResponseSchema = z.object({
     id: z.uuid(),
     email: z.email(),
     name: z.string().nullable(),
-    avatarUrl: z.url().nullable(),
+    avatarUrl: avatarUrlSchema.nullable(),
   }),
 });
 
