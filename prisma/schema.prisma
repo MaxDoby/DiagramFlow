@@ -24,6 +24,8 @@ model User {
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
   refreshSessions  RefreshSession[]
+  folders          Folder[]
+  diagrams         Diagram[]
 
   @@map("users")
 }
@@ -40,4 +42,35 @@ model RefreshSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_sessions")
+}
+
+model Folder {
+  id        String    @id @default(uuid()) @db.Uuid
+  ownerId   String    @map("owner_id") @db.Uuid
+  name      String    @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  diagrams  Diagram[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@map("folders")
+}
+
+model Diagram {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  folderId  String?  @map("folder_id") @db.Uuid
+  name      String   @db.VarChar(150)
+  snapshot  Json     @default("{}") @db.JsonB
+  version   Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder    Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, updatedAt])
+  @@index([folderId])
+  @@map("diagrams")
 }
