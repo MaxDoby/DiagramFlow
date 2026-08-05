@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import {
   type CreateFolderInput,
@@ -11,7 +12,10 @@ import {
   type FolderListResponse,
   type UpdateFolderInput,
 } from '@diagram-flow/contracts';
-import { FolderRepository } from './folder.repository';
+import {
+  FOLDER_REPOSITORY_PORT,
+  type FolderRepositoryPort,
+} from '@diagram-flow/api-ports';
 import {
   FolderNameAlreadyExistsError,
   FolderNotFoundError,
@@ -19,17 +23,20 @@ import {
 
 @Injectable()
 export class FolderService {
-  constructor(private readonly folderRepository: FolderRepository) {}
+  constructor(
+    @Inject(FOLDER_REPOSITORY_PORT)
+    private readonly folderRepository: FolderRepositoryPort,
+  ) {}
 
   async createFolder(
     userId: string,
     input: CreateFolderInput,
   ): Promise<FolderResponse> {
     try {
-      const folder = await this.folderRepository.createForOwner(
-        userId,
-        input.name,
-      );
+      const folder = await this.folderRepository.createForOwner({
+        ownerId: userId,
+        name: input.name,
+      });
       return folderResponseSchema.parse({
         id: folder.id,
         name: folder.name,
@@ -46,7 +53,9 @@ export class FolderService {
   }
 
   async listFolders(userId: string): Promise<FolderListResponse> {
-    const folders = await this.folderRepository.findAllForOwner(userId);
+    const folders = await this.folderRepository.findAllForOwner({
+      ownerId: userId,
+    });
 
     const response = folders.map((folder) => ({
       id: folder.id,
@@ -65,11 +74,11 @@ export class FolderService {
     input: UpdateFolderInput,
   ): Promise<FolderResponse> {
     try {
-      const folder = await this.folderRepository.renameOwnedFolder(
-        userId,
+      const folder = await this.folderRepository.renameOwnedFolder({
+        ownerId: userId,
         folderId,
-        input.name,
-      );
+        name: input.name,
+      });
 
       return folderResponseSchema.parse({
         id: folder.id,
@@ -91,7 +100,10 @@ export class FolderService {
 
   async deleteFolder(userId: string, folderId: string): Promise<void> {
     try {
-      await this.folderRepository.deleteOwnedFolder(userId, folderId);
+      await this.folderRepository.deleteOwnedFolder({
+        ownerId: userId,
+        folderId,
+      });
     } catch (error: unknown) {
       if (error instanceof FolderNotFoundError) {
         throw new NotFoundException('Folder not found');

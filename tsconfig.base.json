@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "strict": false,
     "paths": {
-      "@diagram-flow/contracts": ["./libs/contracts/src/index.ts"]
+      "@diagram-flow/contracts": ["./libs/contracts/src/index.ts"],
+      "@diagram-flow/api-ports": ["./libs/api-ports/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

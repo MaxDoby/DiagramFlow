@@ -1,0 +1,19 @@
+{
+  "name": "api-ports",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api-ports/src",
+  "projectType": "library",
+  "tags": ["scope:api", "type:ports"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/api-ports",
+        "main": "libs/api-ports/src/index.ts",
+        "tsConfig": "libs/api-ports/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  }
+}

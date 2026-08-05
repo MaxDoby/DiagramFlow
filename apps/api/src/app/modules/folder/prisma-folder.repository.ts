@@ -1,17 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { Prisma } from '../../../generated/prisma/client';
-import { FolderRecord } from './types/folderRecord.type';
+import type {
+  FolderRecord,
+  FolderRepositoryPort,
+  CreateFolderRepositoryInput,
+  FindAllFoldersRepositoryInput,
+  RenameFolderRepositoryInput,
+  DeleteFolderRepositoryInput,
+} from '@diagram-flow/api-ports';
 import {
   FolderNameAlreadyExistsError,
   FolderNotFoundError,
 } from './errors/folder.error';
 
 @Injectable()
-export class FolderRepository {
+export class PrismaFolderRepository implements FolderRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createForOwner(ownerId: string, name: string): Promise<FolderRecord> {
+  async createForOwner({
+    ownerId,
+    name,
+  }: CreateFolderRepositoryInput): Promise<FolderRecord> {
     try {
       const folder = await this.prisma.folder.create({
         data: {
@@ -48,7 +58,9 @@ export class FolderRepository {
     }
   }
 
-  async findAllForOwner(ownerId: string): Promise<FolderRecord[]> {
+  async findAllForOwner({
+    ownerId,
+  }: FindAllFoldersRepositoryInput): Promise<FolderRecord[]> {
     const folders = await this.prisma.folder.findMany({
       where: {
         ownerId,
@@ -78,11 +90,11 @@ export class FolderRepository {
     }));
   }
 
-  async renameOwnedFolder(
-    ownerId: string,
-    folderId: string,
-    name: string,
-  ): Promise<FolderRecord> {
+  async renameOwnedFolder({
+    ownerId,
+    folderId,
+    name,
+  }: RenameFolderRepositoryInput): Promise<FolderRecord> {
     try {
       const folder = await this.prisma.folder.update({
         where: {
@@ -122,7 +134,10 @@ export class FolderRepository {
     }
   }
 
-  async deleteOwnedFolder(ownerId: string, folderId: string): Promise<void> {
+  async deleteOwnedFolder({
+    ownerId,
+    folderId,
+  }: DeleteFolderRepositoryInput): Promise<void> {
     try {
       await this.prisma.folder.delete({
         where: {

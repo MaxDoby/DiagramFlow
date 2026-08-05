@@ -3,18 +3,13 @@ import {
   FolderNameAlreadyExistsError,
   FolderNotFoundError,
 } from './errors/folder.error';
-import { FolderRepository } from './folder.repository';
+import { type FolderRepositoryPort } from '@diagram-flow/api-ports';
 import { FolderService } from './folder.service';
 
 describe('FolderService', () => {
   let service: FolderService;
 
-  let folderRepositoryMock: {
-    createForOwner: jest.Mock;
-    findAllForOwner: jest.Mock;
-    renameOwnedFolder: jest.Mock;
-    deleteOwnedFolder: jest.Mock;
-  };
+  let folderRepositoryMock: jest.Mocked<FolderRepositoryPort>;
 
   beforeEach(() => {
     folderRepositoryMock = {
@@ -24,9 +19,7 @@ describe('FolderService', () => {
       deleteOwnedFolder: jest.fn(),
     };
 
-    service = new FolderService(
-      folderRepositoryMock as unknown as FolderRepository,
-    );
+    service = new FolderService(folderRepositoryMock);
   });
 
   it('creates a folder for the authenticated user', async () => {
@@ -47,10 +40,10 @@ describe('FolderService', () => {
       name: 'Work',
     });
 
-    expect(folderRepositoryMock.createForOwner).toHaveBeenCalledWith(
-      userId,
-      'Work',
-    );
+    expect(folderRepositoryMock.createForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      name: 'Work',
+    });
     expect(result).toEqual({
       id: folderId,
       name: 'Work',
@@ -90,8 +83,6 @@ describe('FolderService', () => {
 
     const result = await service.listFolders(userId);
 
-    expect(folderRepositoryMock.findAllForOwner).toHaveBeenCalledWith(userId);
-
     expect(result).toEqual([
       {
         id: '22222222-2222-4222-8222-222222222222',
@@ -101,6 +92,10 @@ describe('FolderService', () => {
         updatedAt: updatedAt.toISOString(),
       },
     ]);
+
+    expect(folderRepositoryMock.findAllForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+    });
   });
 
   it('renames a folder owned by the authenticated user', async () => {
@@ -121,11 +116,11 @@ describe('FolderService', () => {
       name: 'Renamed',
     });
 
-    expect(folderRepositoryMock.renameOwnedFolder).toHaveBeenCalledWith(
-      userId,
+    expect(folderRepositoryMock.renameOwnedFolder).toHaveBeenCalledWith({
+      ownerId: userId,
       folderId,
-      'Renamed',
-    );
+      name: 'Renamed',
+    });
 
     expect(result).toEqual({
       id: folderId,
@@ -174,10 +169,10 @@ describe('FolderService', () => {
 
     await service.deleteFolder(userId, folderId);
 
-    expect(folderRepositoryMock.deleteOwnedFolder).toHaveBeenCalledWith(
-      userId,
+    expect(folderRepositoryMock.deleteOwnedFolder).toHaveBeenCalledWith({
+      ownerId: userId,
       folderId,
-    );
+    });
   });
 
   it('throws NotFoundException when deleting a folder not owned by the user', async () => {
