@@ -1,0 +1,20 @@
+export const DIAGRAM_REPOSITORY_PORT = Symbol('DIAGRAM_REPOSITORY_PORT');
+
+export type DiagramRecord = {
+  id: string;
+  name: string;
+  folderId: string | null;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateDiagramRepositoryInput = {
+  ownerId: string;
+  name: string;
+  folderId?: string;
+};
+
+export interface DiagramRepositoryPort {
+  createForOwner(input: CreateDiagramRepositoryInput): Promise<DiagramRecord>;
+}
