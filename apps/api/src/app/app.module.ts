@@ -7,6 +7,7 @@ import { validateEnvironment } from './config/environment.schema';
 import { ProfileModule } from './modules/profile/profile.module';
 import { AvatarStorageService } from './modules/profile/avatar/avatar-storage.service';
 import { FolderModule } from './modules/folder/folder.module';
+import { DiagramModule } from './modules/diagram/diagram.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { FolderModule } from './modules/folder/folder.module';
     AuthModule,
     ProfileModule,
     FolderModule,
+    DiagramModule,
   ],
 
   controllers: [AppController],
