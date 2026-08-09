@@ -7,8 +7,13 @@ import {
   FindAllDiagramsRepositoryInput,
   DiagramDetailsRecord,
   FindDiagramByIdRepositoryInput,
+  UpdateDiagramRepositoryInput,
 } from '@diagram-flow/api-ports';
-import { DiagramFolderNotFoundError } from './errors/diagram.error';
+import {
+  DiagramFolderNotFoundError,
+  DiagramNotFoundError,
+} from './errors/diagram.error';
+import { Prisma } from '../../../generated/prisma/client';
 
 @Injectable()
 export class PrismaDiagramRepository implements DiagramRepositoryPort {
@@ -49,6 +54,57 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     });
 
     return diagram;
+  }
+
+  async updateForOwner({
+    ownerId,
+    diagramId,
+    name,
+    folderId,
+  }: UpdateDiagramRepositoryInput): Promise<DiagramRecord> {
+    if (folderId !== undefined && folderId !== null) {
+      const folder = await this.prisma.folder.findUnique({
+        where: {
+          id: folderId,
+          ownerId,
+        },
+      });
+
+      if (!folder) {
+        throw new DiagramFolderNotFoundError();
+      }
+    }
+
+    try {
+      const updatedDiagram = await this.prisma.diagram.update({
+        where: {
+          id: diagramId,
+          ownerId,
+        },
+        data: {
+          name,
+          folderId,
+        },
+        select: {
+          id: true,
+          name: true,
+          folderId: true,
+          version: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return updatedDiagram;
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new DiagramNotFoundError();
+      }
+      throw error;
+    }
   }
 
   async findAllForOwner(

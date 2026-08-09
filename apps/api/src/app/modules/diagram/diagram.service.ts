@@ -9,9 +9,14 @@ import {
   diagramDetailsResponseSchema,
   DiagramListResponse,
   diagramListResponseSchema,
+  DiagramSummaryResponse,
   diagramSummaryResponseSchema,
+  UpdateDiagramInput,
 } from '@diagram-flow/contracts';
-import { DiagramFolderNotFoundError } from './errors/diagram.error';
+import {
+  DiagramFolderNotFoundError,
+  DiagramNotFoundError,
+} from './errors/diagram.error';
 
 @Injectable()
 export class DiagramService {
@@ -89,5 +94,37 @@ export class DiagramService {
     });
 
     return response;
+  }
+
+  async updateDiagram(
+    userId: string,
+    diagramId: string,
+    input: UpdateDiagramInput,
+  ): Promise<DiagramSummaryResponse> {
+    try {
+      const diagram = await this.diagramRepository.updateForOwner({
+        ownerId: userId,
+        diagramId,
+        name: input.name,
+        folderId: input.folderId,
+      });
+
+      return diagramSummaryResponseSchema.parse({
+        id: diagram.id,
+        name: diagram.name,
+        folderId: diagram.folderId,
+        version: diagram.version,
+        createdAt: diagram.createdAt.toISOString(),
+        updatedAt: diagram.updatedAt.toISOString(),
+      });
+    } catch (error: unknown) {
+      if (error instanceof DiagramFolderNotFoundError) {
+        throw new NotFoundException('Folder not found');
+      }
+      if (error instanceof DiagramNotFoundError) {
+        throw new NotFoundException('Diagram not found');
+      }
+      throw error;
+    }
   }
 }

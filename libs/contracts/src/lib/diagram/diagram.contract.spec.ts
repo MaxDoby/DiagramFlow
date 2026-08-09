@@ -6,6 +6,7 @@ import {
   diagramSummaryResponseSchema,
   diagramListQuerySchema,
   diagramDetailsResponseSchema,
+  updateDiagramSchema,
 } from './diagram.contract';
 
 describe('createDiagramSchema', () => {
@@ -42,6 +43,36 @@ describe('createDiagramSchema', () => {
       name: 'a'.repeat(151),
     });
 
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('updateDiagramSchema', () => {
+  it('trims a valid updated name', () => {
+    const result = updateDiagramSchema.parse({
+      name: '    Updated Architecture  ',
+    });
+
+    expect(result.name).toBe('Updated Architecture');
+  });
+
+  it('accepts moving a diagram to a folder', () => {
+    const folderId = randomUUID();
+
+    const result = updateDiagramSchema.safeParse({ folderId });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts moving a diagram to root', () => {
+    const result = updateDiagramSchema.safeParse({
+      folderId: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty update', () => {
+    const result = updateDiagramSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });

@@ -1,7 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import { type DiagramRepositoryPort } from '@diagram-flow/api-ports';
 import { DiagramService } from './diagram.service';
-import { DiagramFolderNotFoundError } from './errors/diagram.error';
+import {
+  DiagramFolderNotFoundError,
+  DiagramNotFoundError,
+} from './errors/diagram.error';
 
 describe('DiagramService', () => {
   let service: DiagramService;
@@ -12,6 +15,7 @@ describe('DiagramService', () => {
       createForOwner: jest.fn(),
       findAllForOwner: jest.fn(),
       findByIdForOwner: jest.fn(),
+      updateForOwner: jest.fn(),
     };
 
     service = new DiagramService(diagramRepositoryMock);
@@ -200,5 +204,73 @@ describe('DiagramService', () => {
       ownerId: userId,
       diagramId,
     });
+  });
+
+  it('updates diagram metadata for the authenticated owner', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+    const createdAt = new Date('2030-01-01T10:00:00.000Z');
+    const updatedAt = new Date('2030-01-01T12:00:00.000Z');
+
+    diagramRepositoryMock.updateForOwner.mockResolvedValue({
+      id: diagramId,
+      name: 'Updated Flow',
+      folderId: null,
+      version: 0,
+      createdAt,
+      updatedAt,
+    });
+
+    const result = await service.updateDiagram(userId, diagramId, {
+      name: 'Updated Flow',
+      folderId: null,
+    });
+
+    expect(diagramRepositoryMock.updateForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+      name: 'Updated Flow',
+      folderId: null,
+    });
+
+    expect(result).toEqual({
+      id: diagramId,
+      name: 'Updated Flow',
+      folderId: null,
+      version: 0,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    });
+  });
+
+  it('throws NotFoundException when the destination folder is not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+    const folderId = '33333333-3333-4333-8333-333333333333';
+
+    diagramRepositoryMock.updateForOwner.mockRejectedValue(
+      new DiagramFolderNotFoundError(),
+    );
+
+    await expect(
+      service.updateDiagram(userId, diagramId, {
+        folderId,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws NotFoundException when updating a diagram not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.updateForOwner.mockRejectedValue(
+      new DiagramNotFoundError(),
+    );
+
+    await expect(
+      service.updateDiagram(userId, diagramId, {
+        name: 'Updated Flow',
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

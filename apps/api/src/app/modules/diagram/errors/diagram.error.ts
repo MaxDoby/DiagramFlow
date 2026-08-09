@@ -4,3 +4,10 @@ export class DiagramFolderNotFoundError extends Error {
     this.name = DiagramFolderNotFoundError.name;
   }
 }
+
+export class DiagramNotFoundError extends Error {
+  constructor() {
+    super('Diagram not found');
+    this.name = DiagramNotFoundError.name;
+  }
+}

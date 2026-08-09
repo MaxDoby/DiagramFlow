@@ -9,6 +9,17 @@ export type DiagramRecord = {
   updatedAt: Date;
 };
 
+export interface DiagramRepositoryPort {
+  createForOwner(input: CreateDiagramRepositoryInput): Promise<DiagramRecord>;
+  findAllForOwner(
+    input: FindAllDiagramsRepositoryInput,
+  ): Promise<DiagramRecord[]>;
+  findByIdForOwner(
+    input: FindDiagramByIdRepositoryInput,
+  ): Promise<DiagramDetailsRecord | null>;
+  updateForOwner(input: UpdateDiagramRepositoryInput): Promise<DiagramRecord>;
+}
+
 export type DiagramDetailsRecord = DiagramRecord & {
   snapshot: unknown;
 };
@@ -24,15 +35,12 @@ export type CreateDiagramRepositoryInput = {
   folderId?: string;
 };
 
-export interface DiagramRepositoryPort {
-  createForOwner(input: CreateDiagramRepositoryInput): Promise<DiagramRecord>;
-  findAllForOwner(
-    input: FindAllDiagramsRepositoryInput,
-  ): Promise<DiagramRecord[]>;
-  findByIdForOwner(
-    input: FindDiagramByIdRepositoryInput,
-  ): Promise<DiagramDetailsRecord | null>;
-}
+export type UpdateDiagramRepositoryInput = {
+  ownerId: string;
+  diagramId: string;
+  name?: string;
+  folderId?: string | null;
+};
 
 export type FindAllDiagramsRepositoryInput = {
   ownerId: string;

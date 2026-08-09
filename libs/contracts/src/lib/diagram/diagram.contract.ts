@@ -9,6 +9,17 @@ export const createDiagramSchema = z.object({
 
 export type CreateDiagramInput = z.infer<typeof createDiagramSchema>;
 
+export const updateDiagramSchema = z
+  .object({
+    name: diagramNameSchema.optional(),
+    folderId: z.uuid().nullable().optional(),
+  })
+  .refine((input) => input.name !== undefined || input.folderId !== undefined, {
+    message: 'At least one field is required.',
+  });
+
+export type UpdateDiagramInput = z.infer<typeof updateDiagramSchema>;
+
 export const diagramParamsSchema = z.object({
   diagramId: z.uuid(),
 });

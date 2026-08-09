@@ -6,6 +6,7 @@ import {
   Get,
   Query,
   Param,
+  Patch,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,6 +23,8 @@ import {
   DiagramParams,
   diagramParamsSchema,
   DiagramSummaryResponse,
+  UpdateDiagramInput,
+  updateDiagramSchema,
 } from '@diagram-flow/contracts';
 
 @Controller('diagrams')
@@ -53,5 +56,16 @@ export class DiagramController {
     params: DiagramParams,
   ): Promise<DiagramDetailsResponse> {
     return this.diagramService.getDiagram(user.sub, params.diagramId);
+  }
+
+  @Patch(':diagramId')
+  updateDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @Body(new ZodValidationPipe(updateDiagramSchema))
+    input: UpdateDiagramInput,
+  ): Promise<DiagramSummaryResponse> {
+    return this.diagramService.updateDiagram(user.sub, params.diagramId, input);
   }
 }
