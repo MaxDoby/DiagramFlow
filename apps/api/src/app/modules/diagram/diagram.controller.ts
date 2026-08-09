@@ -1,4 +1,12 @@
-import { Controller, Post, UseGuards, Body, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Body,
+  Get,
+  Query,
+  Param,
+} from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DiagramService } from './diagram.service';
@@ -7,9 +15,12 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
   CreateDiagramInput,
   createDiagramSchema,
+  DiagramDetailsResponse,
   DiagramListQuery,
   diagramListQuerySchema,
   DiagramListResponse,
+  DiagramParams,
+  diagramParamsSchema,
   DiagramSummaryResponse,
 } from '@diagram-flow/contracts';
 
@@ -33,5 +44,14 @@ export class DiagramController {
     @Body(new ZodValidationPipe(createDiagramSchema)) input: CreateDiagramInput,
   ): Promise<DiagramSummaryResponse> {
     return this.diagramService.createDiagram(user.sub, input);
+  }
+
+  @Get(':diagramId')
+  getDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<DiagramDetailsResponse> {
+    return this.diagramService.getDiagram(user.sub, params.diagramId);
   }
 }

@@ -5,6 +5,8 @@ import {
   DiagramRecord,
   DiagramRepositoryPort,
   FindAllDiagramsRepositoryInput,
+  DiagramDetailsRecord,
+  FindDiagramByIdRepositoryInput,
 } from '@diagram-flow/api-ports';
 import { DiagramFolderNotFoundError } from './errors/diagram.error';
 
@@ -69,5 +71,27 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     });
 
     return diagramsList;
+  }
+
+  async findByIdForOwner({
+    ownerId,
+    diagramId,
+  }: FindDiagramByIdRepositoryInput): Promise<DiagramDetailsRecord | null> {
+    const diagram = await this.prisma.diagram.findUnique({
+      where: {
+        id: diagramId,
+        ownerId,
+      },
+      select: {
+        id: true,
+        name: true,
+        folderId: true,
+        snapshot: true,
+        version: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return diagram;
   }
 }

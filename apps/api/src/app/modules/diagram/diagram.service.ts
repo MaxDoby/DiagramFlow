@@ -5,6 +5,8 @@ import {
 } from '@diagram-flow/api-ports';
 import {
   CreateDiagramInput,
+  DiagramDetailsResponse,
+  diagramDetailsResponseSchema,
   DiagramListResponse,
   diagramListResponseSchema,
   diagramSummaryResponseSchema,
@@ -61,5 +63,31 @@ export class DiagramService {
     }));
 
     return diagramListResponseSchema.parse(response);
+  }
+
+  async getDiagram(
+    userId: string,
+    diagramId: string,
+  ): Promise<DiagramDetailsResponse> {
+    const diagram = await this.diagramRepository.findByIdForOwner({
+      ownerId: userId,
+      diagramId,
+    });
+
+    if (!diagram) {
+      throw new NotFoundException('Diagram not found');
+    }
+
+    const response = diagramDetailsResponseSchema.parse({
+      id: diagram.id,
+      name: diagram.name,
+      folderId: diagram.folderId,
+      snapshot: diagram.snapshot,
+      version: diagram.version,
+      createdAt: diagram.createdAt.toISOString(),
+      updatedAt: diagram.updatedAt.toISOString(),
+    });
+
+    return response;
   }
 }

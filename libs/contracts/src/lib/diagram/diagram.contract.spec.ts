@@ -5,6 +5,7 @@ import {
   diagramParamsSchema,
   diagramSummaryResponseSchema,
   diagramListQuerySchema,
+  diagramDetailsResponseSchema,
 } from './diagram.contract';
 
 describe('createDiagramSchema', () => {
@@ -92,6 +93,38 @@ describe('diagramListQuerySchema', () => {
   it('rejects an invalid folder id', () => {
     const result = diagramListQuerySchema.safeParse({
       folderId: 'invalid id',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('diagramDetailsResponseSchema', () => {
+  it('should accept a valid diagram details response', () => {
+    const timestamp = new Date().toISOString();
+    const result = diagramDetailsResponseSchema.safeParse({
+      id: randomUUID(),
+      name: 'System Architecture',
+      folderId: null,
+      version: 0,
+      snapshot: {},
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a response with an undefined snapshot', () => {
+    const timestamp = new Date().toISOString();
+    const result = diagramDetailsResponseSchema.safeParse({
+      id: randomUUID(),
+      name: 'System Architecture',
+      folderId: null,
+      version: 0,
+      snapshot: undefined,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     });
 
     expect(result.success).toBe(false);

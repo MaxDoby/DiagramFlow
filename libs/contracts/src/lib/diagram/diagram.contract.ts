@@ -34,5 +34,13 @@ export type DiagramSummaryResponse = z.infer<
   typeof diagramSummaryResponseSchema
 >;
 
+export const diagramDetailsResponseSchema = diagramSummaryResponseSchema.extend(
+  { snapshot: z.json() },
+);
+
+export type DiagramDetailsResponse = z.infer<
+  typeof diagramDetailsResponseSchema
+>;
+
 export const diagramListResponseSchema = z.array(diagramSummaryResponseSchema);
 export type DiagramListResponse = z.infer<typeof diagramListResponseSchema>;

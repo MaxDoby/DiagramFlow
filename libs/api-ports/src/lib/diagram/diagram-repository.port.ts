@@ -9,6 +9,15 @@ export type DiagramRecord = {
   updatedAt: Date;
 };
 
+export type DiagramDetailsRecord = DiagramRecord & {
+  snapshot: unknown;
+};
+
+export type FindDiagramByIdRepositoryInput = {
+  ownerId: string;
+  diagramId: string;
+};
+
 export type CreateDiagramRepositoryInput = {
   ownerId: string;
   name: string;
@@ -20,6 +29,9 @@ export interface DiagramRepositoryPort {
   findAllForOwner(
     input: FindAllDiagramsRepositoryInput,
   ): Promise<DiagramRecord[]>;
+  findByIdForOwner(
+    input: FindDiagramByIdRepositoryInput,
+  ): Promise<DiagramDetailsRecord | null>;
 }
 
 export type FindAllDiagramsRepositoryInput = {

@@ -11,6 +11,7 @@ describe('DiagramService', () => {
     diagramRepositoryMock = {
       createForOwner: jest.fn(),
       findAllForOwner: jest.fn(),
+      findByIdForOwner: jest.fn(),
     };
 
     service = new DiagramService(diagramRepositoryMock);
@@ -150,5 +151,54 @@ describe('DiagramService', () => {
       folderId,
     });
     expect(result).toEqual([]);
+  });
+
+  it('returns diagram details for the authenticated owner', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+    const createdAt = new Date('2030-01-01T10:00:00.000Z');
+    const updatedAt = new Date('2030-01-01T11:00:00.000Z');
+    const snapshot = {};
+
+    diagramRepositoryMock.findByIdForOwner.mockResolvedValue({
+      id: diagramId,
+      name: 'Flow 1',
+      folderId: null,
+      snapshot,
+      version: 0,
+      createdAt,
+      updatedAt,
+    });
+    const result = await service.getDiagram(userId, diagramId);
+
+    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+    });
+    expect(result).toEqual({
+      id: diagramId,
+      name: 'Flow 1',
+      folderId: null,
+      snapshot,
+      version: 0,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    });
+  });
+
+  it('throws NotFoundException when the diagram is not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.findByIdForOwner.mockResolvedValue(null);
+
+    await expect(service.getDiagram(userId, diagramId)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+    });
   });
 });
