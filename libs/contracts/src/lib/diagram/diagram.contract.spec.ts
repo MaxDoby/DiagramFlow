@@ -4,6 +4,7 @@ import {
   createDiagramSchema,
   diagramParamsSchema,
   diagramSummaryResponseSchema,
+  diagramListQuerySchema,
 } from './diagram.contract';
 
 describe('createDiagramSchema', () => {
@@ -68,5 +69,31 @@ describe('diagramSummaryResponseSchema', () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe('diagramListQuerySchema', () => {
+  it('accepts a query without a folder filter', () => {
+    const result = diagramListQuerySchema.safeParse({});
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid folder id', () => {
+    const folderId = randomUUID();
+
+    const result = diagramListQuerySchema.safeParse({
+      folderId,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid folder id', () => {
+    const result = diagramListQuerySchema.safeParse({
+      folderId: 'invalid id',
+    });
+
+    expect(result.success).toBe(false);
   });
 });

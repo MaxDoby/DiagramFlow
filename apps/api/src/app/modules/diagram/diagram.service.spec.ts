@@ -10,6 +10,7 @@ describe('DiagramService', () => {
   beforeEach(() => {
     diagramRepositoryMock = {
       createForOwner: jest.fn(),
+      findAllForOwner: jest.fn(),
     };
 
     service = new DiagramService(diagramRepositoryMock);
@@ -99,5 +100,55 @@ describe('DiagramService', () => {
         folderId,
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should return a list of existing diagrams', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+    const createdAt = new Date('2030-01-01T10:00:00.000Z');
+    const updatedAt = new Date('2030-01-01T11:00:00.000Z');
+
+    diagramRepositoryMock.findAllForOwner.mockResolvedValue([
+      {
+        id: diagramId,
+        name: 'Flow 1',
+        folderId: null,
+        version: 0,
+        createdAt,
+        updatedAt,
+      },
+    ]);
+
+    const result = await service.listDiagrams(userId);
+
+    expect(diagramRepositoryMock.findAllForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      folderId: undefined,
+    });
+    expect(result).toEqual([
+      {
+        id: diagramId,
+        name: 'Flow 1',
+        folderId: null,
+        version: 0,
+        createdAt: createdAt.toISOString(),
+        updatedAt: updatedAt.toISOString(),
+      },
+    ]);
+  });
+
+  it('lists diagrams filtered by folder', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const folderId = '33333333-3333-4333-8333-333333333333';
+
+    diagramRepositoryMock.findAllForOwner.mockResolvedValue([]);
+
+    const result = await service.listDiagrams(userId, folderId);
+
+    expect(diagramRepositoryMock.findAllForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      folderId,
+    });
+    expect(result).toEqual([]);
   });
 });

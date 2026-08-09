@@ -13,6 +13,12 @@ export const diagramParamsSchema = z.object({
   diagramId: z.uuid(),
 });
 
+export const diagramListQuerySchema = z.object({
+  folderId: z.uuid().optional(),
+});
+
+export type DiagramListQuery = z.infer<typeof diagramListQuerySchema>;
+
 export type DiagramParams = z.infer<typeof diagramParamsSchema>;
 
 export const diagramSummaryResponseSchema = z.object({

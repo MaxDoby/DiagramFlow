@@ -17,4 +17,12 @@ export type CreateDiagramRepositoryInput = {
 
 export interface DiagramRepositoryPort {
   createForOwner(input: CreateDiagramRepositoryInput): Promise<DiagramRecord>;
+  findAllForOwner(
+    input: FindAllDiagramsRepositoryInput,
+  ): Promise<DiagramRecord[]>;
 }
+
+export type FindAllDiagramsRepositoryInput = {
+  ownerId: string;
+  folderId?: string;
+};

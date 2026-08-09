@@ -5,6 +5,8 @@ import {
 } from '@diagram-flow/api-ports';
 import {
   CreateDiagramInput,
+  DiagramListResponse,
+  diagramListResponseSchema,
   diagramSummaryResponseSchema,
 } from '@diagram-flow/contracts';
 import { DiagramFolderNotFoundError } from './errors/diagram.error';
@@ -38,5 +40,26 @@ export class DiagramService {
       }
       throw error;
     }
+  }
+
+  async listDiagrams(
+    userId: string,
+    folderId?: string,
+  ): Promise<DiagramListResponse> {
+    const diagramsList = await this.diagramRepository.findAllForOwner({
+      ownerId: userId,
+      folderId,
+    });
+
+    const response = diagramsList.map((diagram) => ({
+      id: diagram.id,
+      name: diagram.name,
+      folderId: diagram.folderId,
+      version: diagram.version,
+      createdAt: diagram.createdAt.toISOString(),
+      updatedAt: diagram.updatedAt.toISOString(),
+    }));
+
+    return diagramListResponseSchema.parse(response);
   }
 }
