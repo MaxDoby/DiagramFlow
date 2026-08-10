@@ -8,6 +8,7 @@ import {
   DiagramDetailsRecord,
   FindDiagramByIdRepositoryInput,
   UpdateDiagramRepositoryInput,
+  DeleteDiagramRepositoryInput,
 } from '@diagram-flow/api-ports';
 import {
   DiagramFolderNotFoundError,
@@ -96,6 +97,28 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
       });
 
       return updatedDiagram;
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new DiagramNotFoundError();
+      }
+      throw error;
+    }
+  }
+
+  async deleteForOwner({
+    ownerId,
+    diagramId,
+  }: DeleteDiagramRepositoryInput): Promise<void> {
+    try {
+      await this.prisma.diagram.delete({
+        where: {
+          id: diagramId,
+          ownerId,
+        },
+      });
     } catch (error: unknown) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

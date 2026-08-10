@@ -18,6 +18,7 @@ export interface DiagramRepositoryPort {
     input: FindDiagramByIdRepositoryInput,
   ): Promise<DiagramDetailsRecord | null>;
   updateForOwner(input: UpdateDiagramRepositoryInput): Promise<DiagramRecord>;
+  deleteForOwner(input: DeleteDiagramRepositoryInput): Promise<void>;
 }
 
 export type DiagramDetailsRecord = DiagramRecord & {
@@ -40,6 +41,11 @@ export type UpdateDiagramRepositoryInput = {
   diagramId: string;
   name?: string;
   folderId?: string | null;
+};
+
+export type DeleteDiagramRepositoryInput = {
+  ownerId: string;
+  diagramId: string;
 };
 
 export type FindAllDiagramsRepositoryInput = {

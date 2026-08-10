@@ -102,7 +102,7 @@ export class DiagramService {
     input: UpdateDiagramInput,
   ): Promise<DiagramSummaryResponse> {
     try {
-      const diagram = await this.diagramRepository.updateForOwner({
+      const updatedDiagram = await this.diagramRepository.updateForOwner({
         ownerId: userId,
         diagramId,
         name: input.name,
@@ -110,17 +110,31 @@ export class DiagramService {
       });
 
       return diagramSummaryResponseSchema.parse({
-        id: diagram.id,
-        name: diagram.name,
-        folderId: diagram.folderId,
-        version: diagram.version,
-        createdAt: diagram.createdAt.toISOString(),
-        updatedAt: diagram.updatedAt.toISOString(),
+        id: updatedDiagram.id,
+        name: updatedDiagram.name,
+        folderId: updatedDiagram.folderId,
+        version: updatedDiagram.version,
+        createdAt: updatedDiagram.createdAt.toISOString(),
+        updatedAt: updatedDiagram.updatedAt.toISOString(),
       });
     } catch (error: unknown) {
       if (error instanceof DiagramFolderNotFoundError) {
         throw new NotFoundException('Folder not found');
       }
+      if (error instanceof DiagramNotFoundError) {
+        throw new NotFoundException('Diagram not found');
+      }
+      throw error;
+    }
+  }
+
+  async deleteDiagram(userId: string, diagramId: string): Promise<void> {
+    try {
+      await this.diagramRepository.deleteForOwner({
+        ownerId: userId,
+        diagramId,
+      });
+    } catch (error: unknown) {
       if (error instanceof DiagramNotFoundError) {
         throw new NotFoundException('Diagram not found');
       }

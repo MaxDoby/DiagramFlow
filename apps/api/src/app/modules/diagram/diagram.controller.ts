@@ -7,6 +7,9 @@ import {
   Query,
   Param,
   Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -67,5 +70,15 @@ export class DiagramController {
     input: UpdateDiagramInput,
   ): Promise<DiagramSummaryResponse> {
     return this.diagramService.updateDiagram(user.sub, params.diagramId, input);
+  }
+
+  @Delete(':diagramId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<void> {
+    return this.diagramService.deleteDiagram(user.sub, params.diagramId);
   }
 }

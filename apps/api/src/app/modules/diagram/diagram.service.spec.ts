@@ -16,6 +16,7 @@ describe('DiagramService', () => {
       findAllForOwner: jest.fn(),
       findByIdForOwner: jest.fn(),
       updateForOwner: jest.fn(),
+      deleteForOwner: jest.fn(),
     };
 
     service = new DiagramService(diagramRepositoryMock);
@@ -271,6 +272,34 @@ describe('DiagramService', () => {
       service.updateDiagram(userId, diagramId, {
         name: 'Updated Flow',
       }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('deletes a diagram owned by the authenticated user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.deleteForOwner.mockResolvedValue(undefined);
+
+    await expect(
+      service.deleteDiagram(userId, diagramId),
+    ).resolves.toBeUndefined();
+    expect(diagramRepositoryMock.deleteForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+    });
+  });
+
+  it('throws NotFoundException when deleting a diagram not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.deleteForOwner.mockRejectedValue(
+      new DiagramNotFoundError(),
+    );
+
+    await expect(
+      service.deleteDiagram(userId, diagramId),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
