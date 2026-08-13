@@ -11,3 +11,10 @@ export class DiagramNotFoundError extends Error {
     this.name = DiagramNotFoundError.name;
   }
 }
+
+export class DiagramVersionConflictError extends Error {
+  constructor() {
+    super('Diagram version conflict');
+    this.name = DiagramVersionConflictError.name;
+  }
+}

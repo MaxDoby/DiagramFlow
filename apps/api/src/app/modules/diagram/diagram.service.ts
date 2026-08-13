@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Inject,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   DIAGRAM_REPOSITORY_PORT,
   DiagramRepositoryPort,
@@ -12,10 +17,14 @@ import {
   DiagramSummaryResponse,
   diagramSummaryResponseSchema,
   UpdateDiagramInput,
+  SaveDiagramSnapshotInput,
+  SaveDiagramSnapshotResponse,
+  saveDiagramSnapshotResponseSchema,
 } from '@diagram-flow/contracts';
 import {
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
+  DiagramVersionConflictError,
 } from './errors/diagram.error';
 
 @Injectable()
@@ -123,6 +132,34 @@ export class DiagramService {
       }
       if (error instanceof DiagramNotFoundError) {
         throw new NotFoundException('Diagram not found');
+      }
+      throw error;
+    }
+  }
+
+  async saveSnapshot(
+    userId: string,
+    diagramId: string,
+    input: SaveDiagramSnapshotInput,
+  ): Promise<SaveDiagramSnapshotResponse> {
+    try {
+      const savedSnapshot = await this.diagramRepository.saveSnapshotForOwner({
+        ownerId: userId,
+        diagramId,
+        snapshot: input.snapshot,
+        expectedVersion: input.expectedVersion,
+      });
+
+      return saveDiagramSnapshotResponseSchema.parse({
+        version: savedSnapshot.version,
+        updatedAt: savedSnapshot.updatedAt.toISOString(),
+      });
+    } catch (error: unknown) {
+      if (error instanceof DiagramNotFoundError) {
+        throw new NotFoundException('Diagram not found');
+      }
+      if (error instanceof DiagramVersionConflictError) {
+        throw new ConflictException('Diagram was modified by another user');
       }
       throw error;
     }

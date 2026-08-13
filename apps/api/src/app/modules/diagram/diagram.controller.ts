@@ -10,6 +10,7 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Put,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -28,6 +29,9 @@ import {
   DiagramSummaryResponse,
   UpdateDiagramInput,
   updateDiagramSchema,
+  SaveDiagramSnapshotInput,
+  SaveDiagramSnapshotResponse,
+  saveDiagramSnapshotSchema,
 } from '@diagram-flow/contracts';
 
 @Controller('diagrams')
@@ -70,6 +74,17 @@ export class DiagramController {
     input: UpdateDiagramInput,
   ): Promise<DiagramSummaryResponse> {
     return this.diagramService.updateDiagram(user.sub, params.diagramId, input);
+  }
+
+  @Put(':diagramId/snapshot')
+  saveSnapshot(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @Body(new ZodValidationPipe(saveDiagramSnapshotSchema))
+    input: SaveDiagramSnapshotInput,
+  ): Promise<SaveDiagramSnapshotResponse> {
+    return this.diagramService.saveSnapshot(user.sub, params.diagramId, input);
   }
 
   @Delete(':diagramId')

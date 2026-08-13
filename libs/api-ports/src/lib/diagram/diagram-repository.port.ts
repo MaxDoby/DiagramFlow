@@ -18,6 +18,9 @@ export interface DiagramRepositoryPort {
     input: FindDiagramByIdRepositoryInput,
   ): Promise<DiagramDetailsRecord | null>;
   updateForOwner(input: UpdateDiagramRepositoryInput): Promise<DiagramRecord>;
+  saveSnapshotForOwner(
+    input: SaveDiagramSnapshotRepositoryInput,
+  ): Promise<SaveDiagramSnapshotRecord>;
   deleteForOwner(input: DeleteDiagramRepositoryInput): Promise<void>;
 }
 
@@ -41,6 +44,18 @@ export type UpdateDiagramRepositoryInput = {
   diagramId: string;
   name?: string;
   folderId?: string | null;
+};
+
+export type SaveDiagramSnapshotRepositoryInput = {
+  ownerId: string;
+  diagramId: string;
+  snapshot: unknown;
+  expectedVersion: number;
+};
+
+export type SaveDiagramSnapshotRecord = {
+  version: number;
+  updatedAt: Date;
 };
 
 export type DeleteDiagramRepositoryInput = {

@@ -4,13 +4,22 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './app';
 
 describe('App', () => {
-  it('should render successfully', () => {
-    const { baseElement } = render(<BrowserRouter><App /></BrowserRouter>);
-    expect(baseElement).toBeTruthy();
+  beforeEach(() => {
+    window.history.pushState(
+      {},
+      '',
+      '/diagrams/22222222-2222-4222-8222-222222222222/editor',
+    );
   });
 
-  it('should have a greeting as the title', () => {
-    const { getAllByText } = render(<BrowserRouter><App /></BrowserRouter>);
-    expect(getAllByText(new RegExp('Welcome web', 'gi')).length > 0).toBeTruthy();
+  it('should render the diagram editor route', () => {
+    const { container } = render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+
+    const editorPage = container.querySelector('main.editor-page');
+    expect(editorPage).toBeTruthy();
   });
 });

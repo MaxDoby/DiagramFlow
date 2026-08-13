@@ -9,10 +9,13 @@ import {
   FindDiagramByIdRepositoryInput,
   UpdateDiagramRepositoryInput,
   DeleteDiagramRepositoryInput,
+  SaveDiagramSnapshotRecord,
+  SaveDiagramSnapshotRepositoryInput,
 } from '@diagram-flow/api-ports';
 import {
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
+  DiagramVersionConflictError,
 } from './errors/diagram.error';
 import { Prisma } from '../../../generated/prisma/client';
 
@@ -103,6 +106,53 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
         error.code === 'P2025'
       ) {
         throw new DiagramNotFoundError();
+      }
+      throw error;
+    }
+  }
+
+  async saveSnapshotForOwner({
+    ownerId,
+    diagramId,
+    snapshot,
+    expectedVersion,
+  }: SaveDiagramSnapshotRepositoryInput): Promise<SaveDiagramSnapshotRecord> {
+    try {
+      return await this.prisma.diagram.update({
+        where: {
+          id: diagramId,
+          ownerId,
+          version: expectedVersion,
+        },
+        data: {
+          snapshot: snapshot as Prisma.InputJsonValue,
+          version: {
+            increment: 1,
+          },
+        },
+        select: {
+          version: true,
+          updatedAt: true,
+        },
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        const diagram = await this.prisma.diagram.findUnique({
+          where: {
+            id: diagramId,
+            ownerId,
+          },
+          select: {
+            id: true,
+          },
+        });
+        if (!diagram) {
+          throw new DiagramNotFoundError();
+        }
+        throw new DiagramVersionConflictError();
       }
       throw error;
     }

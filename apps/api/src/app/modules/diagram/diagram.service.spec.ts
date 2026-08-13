@@ -1,9 +1,10 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { type DiagramRepositoryPort } from '@diagram-flow/api-ports';
 import { DiagramService } from './diagram.service';
 import {
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
+  DiagramVersionConflictError,
 } from './errors/diagram.error';
 
 describe('DiagramService', () => {
@@ -16,6 +17,7 @@ describe('DiagramService', () => {
       findAllForOwner: jest.fn(),
       findByIdForOwner: jest.fn(),
       updateForOwner: jest.fn(),
+      saveSnapshotForOwner: jest.fn(),
       deleteForOwner: jest.fn(),
     };
 
@@ -184,7 +186,15 @@ describe('DiagramService', () => {
       id: diagramId,
       name: 'Flow 1',
       folderId: null,
-      snapshot,
+      snapshot: {
+        nodes: [],
+        edges: [],
+        viewport: {
+          x: 0,
+          y: 0,
+          zoom: 1,
+        },
+      },
       version: 0,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
@@ -273,6 +283,91 @@ describe('DiagramService', () => {
         name: 'Updated Flow',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('saves a diagram snapshot for the authenticated owner', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+    const updatedAt = new Date('2030-01-01T12:00:00.000Z');
+    const snapshot = {
+      nodes: [],
+      edges: [],
+      viewport: {
+        x: 0,
+        y: 0,
+        zoom: 1,
+      },
+    };
+
+    diagramRepositoryMock.saveSnapshotForOwner.mockResolvedValue({
+      version: 1,
+      updatedAt,
+    });
+
+    const result = await service.saveSnapshot(userId, diagramId, {
+      snapshot,
+      expectedVersion: 0,
+    });
+
+    expect(diagramRepositoryMock.saveSnapshotForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+      snapshot,
+      expectedVersion: 0,
+    });
+
+    expect(result).toEqual({
+      version: 1,
+      updatedAt: updatedAt.toISOString(),
+    });
+  });
+
+  it('throws NotFoundException when saving a diagram not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.saveSnapshotForOwner.mockRejectedValue(
+      new DiagramNotFoundError(),
+    );
+
+    await expect(
+      service.saveSnapshot(userId, diagramId, {
+        snapshot: {
+          nodes: [],
+          edges: [],
+          viewport: {
+            x: 0,
+            y: 0,
+            zoom: 1,
+          },
+        },
+        expectedVersion: 0,
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws ConflictException when saving with a stale version', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.saveSnapshotForOwner.mockRejectedValue(
+      new DiagramVersionConflictError(),
+    );
+
+    await expect(
+      service.saveSnapshot(userId, diagramId, {
+        snapshot: {
+          nodes: [],
+          edges: [],
+          viewport: {
+            x: 0,
+            y: 0,
+            zoom: 1,
+          },
+        },
+        expectedVersion: 0,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('deletes a diagram owned by the authenticated user', async () => {

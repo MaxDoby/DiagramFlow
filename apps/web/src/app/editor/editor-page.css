@@ -1,0 +1,37 @@
+.editor-page {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f4f6f8;
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
+}
+
+.editor-toolbar__button:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.editor-toolbar__button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}

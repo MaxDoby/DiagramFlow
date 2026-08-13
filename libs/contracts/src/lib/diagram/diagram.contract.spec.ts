@@ -7,6 +7,8 @@ import {
   diagramListQuerySchema,
   diagramDetailsResponseSchema,
   updateDiagramSchema,
+  diagramSnapshotSchema,
+  saveDiagramSnapshotSchema,
 } from './diagram.contract';
 
 describe('createDiagramSchema', () => {
@@ -73,6 +75,90 @@ describe('updateDiagramSchema', () => {
 
   it('rejects an empty update', () => {
     const result = updateDiagramSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('diagramSnapshotSchema', () => {
+  it('normalizes an empty snapshot', () => {
+    const result = diagramSnapshotSchema.parse({});
+
+    expect(result).toEqual({
+      nodes: [],
+      edges: [],
+      viewport: {
+        x: 0,
+        y: 0,
+        zoom: 1,
+      },
+    });
+  });
+
+  it('accepts a valid React Flow snapshot', () => {
+    const sourceNodeId = randomUUID();
+    const targetNodeId = randomUUID();
+
+    const result = diagramSnapshotSchema.safeParse({
+      nodes: [
+        {
+          id: sourceNodeId,
+          position: { x: 80, y: 80 },
+          data: { label: 'API Gateway' },
+        },
+        {
+          id: targetNodeId,
+          position: { x: 320, y: 80 },
+          data: { label: 'Database' },
+        },
+      ],
+      edges: [
+        {
+          id: randomUUID(),
+          source: sourceNodeId,
+          target: targetNodeId,
+        },
+      ],
+      viewport: {
+        x: 0,
+        y: 0,
+        zoom: 1,
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a viewport with a non-positive zoom', () => {
+    const result = diagramSnapshotSchema.safeParse({
+      nodes: [],
+      edges: [],
+      viewport: {
+        x: 0,
+        y: 0,
+        zoom: 0,
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('saveDiagramSnapshotSchema', () => {
+  it('accepts a snapshot with the expected version', () => {
+    const result = saveDiagramSnapshotSchema.safeParse({
+      snapshot: {},
+      expectedVersion: 0,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a negative expected version', () => {
+    const result = saveDiagramSnapshotSchema.safeParse({
+      snapshot: {},
+      expectedVersion: -1,
+    });
+
     expect(result.success).toBe(false);
   });
 });
