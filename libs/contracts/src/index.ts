@@ -6,3 +6,4 @@ export * from './lib/profile/profile.contract';
 export * from './lib/profile/change-password.contract';
 export * from './lib/folder/folder.contract';
 export * from './lib/diagram/diagram.contract';
+export * from './lib/common/api-error.schema';

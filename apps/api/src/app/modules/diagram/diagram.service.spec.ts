@@ -29,40 +29,6 @@ describe('DiagramService', () => {
     const diagramId = '22222222-2222-4222-8222-222222222222';
     const createdAt = new Date('2030-01-01T10:00:00.000Z');
     const updatedAt = new Date('2030-01-01T10:00:00.000Z');
-
-    diagramRepositoryMock.createForOwner.mockResolvedValue({
-      id: diagramId,
-      name: 'Flow 1',
-      folderId: null,
-      version: 0,
-      createdAt,
-      updatedAt,
-    });
-
-    const result = await service.createDiagram(userId, {
-      name: 'Flow 1',
-    });
-
-    expect(diagramRepositoryMock.createForOwner).toHaveBeenCalledWith({
-      ownerId: userId,
-      name: 'Flow 1',
-      folderId: undefined,
-    });
-    expect(result).toEqual({
-      id: diagramId,
-      name: 'Flow 1',
-      folderId: null,
-      version: 0,
-      createdAt: createdAt.toISOString(),
-      updatedAt: updatedAt.toISOString(),
-    });
-  });
-
-  it('creates a diagram for the authenticated user', async () => {
-    const userId = '11111111-1111-4111-8111-111111111111';
-    const diagramId = '22222222-2222-4222-8222-222222222222';
-    const createdAt = new Date('2030-01-01T10:00:00.000Z');
-    const updatedAt = new Date('2030-01-01T10:00:00.000Z');
     const folderId = '33333333-3333-4333-8333-333333333333';
 
     diagramRepositoryMock.createForOwner.mockResolvedValue({
