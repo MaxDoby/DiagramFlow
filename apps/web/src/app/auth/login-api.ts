@@ -3,14 +3,14 @@ import {
   type LoginInput,
   type LoginResponse,
   loginSchema,
-  apiErrorResponseSchema,
 } from '@diagram-flow/contracts';
 import { setAccessToken } from './access-token';
+import { throwApiError } from '../api/throw-api-error';
 
 export const loginUser = async (input: LoginInput): Promise<LoginResponse> => {
-    const validatedInput = loginSchema.parse(input)
-  
-    const response = await fetch('/api/auth/login', {
+  const validatedInput = loginSchema.parse(input);
+
+  const response = await fetch('/api/auth/login', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -20,9 +20,7 @@ export const loginUser = async (input: LoginInput): Promise<LoginResponse> => {
   });
 
   if (!response.ok) {
-const errorPayload: unknown = await response.json();
-const apiError = apiErrorResponseSchema.parse(errorPayload);
-throw new Error(apiError.message);
+    await throwApiError(response);
   }
 
   const payload: unknown = await response.json();

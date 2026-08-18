@@ -1,38 +1,41 @@
-import { useMutation } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
 import { useState, type SubmitEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { registerSchema } from '@diagram-flow/contracts';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserPlus } from 'lucide-react';
 import * as z from 'zod';
-import { loginSchema } from '@diagram-flow/contracts';
-import { LogIn } from 'lucide-react';
 import { AuthLayout } from './auth-layout';
 import {
   AuthField,
   AuthFormError,
   AuthSubmitButton,
 } from './auth-form-controls';
-import { loginUser } from './login-api';
+import { registerUser } from './register-api';
 
-type LoginFieldErrors = {
+type RegisterFieldErrors = {
   email?: string;
   password?: string;
 };
 
-export const LoginPage = () => {
-  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
+export const RegisterPage = () => {
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const navigate = useNavigate();
 
-  const loginMutation = useMutation({
-    mutationFn: loginUser,
-    onSuccess: () => {
-      navigate('/diagrams');
+  const registerMutation = useMutation({
+    mutationFn: registerUser,
+    onSuccess: (result) => {
+      navigate('/confirm-email', {
+        state: { email: result.email },
+      });
     },
   });
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    loginMutation.reset();
+    registerMutation.reset();
+
     const formData = new FormData(event.currentTarget);
-    const validationResult = loginSchema.safeParse({
+    const validationResult = registerSchema.safeParse({
       email: formData.get('email'),
       password: formData.get('password'),
     });
@@ -47,26 +50,25 @@ export const LoginPage = () => {
     }
 
     setFieldErrors({});
-    loginMutation.mutate(validationResult.data);
+    registerMutation.mutate(validationResult.data);
   };
 
   const requestError =
-    loginMutation.error instanceof Error
-      ? loginMutation.error.message
+    registerMutation.error instanceof Error
+      ? registerMutation.error.message
       : undefined;
 
   return (
     <AuthLayout
-      title="Sign in"
-      subtitle="Welcome back."
+      title="Create account"
       footer={
         <>
-          No account?{' '}
+          Already registered?{' '}
           <Link
             className="font-medium text-teal-700 hover:underline"
-            to="/register"
+            to="/login"
           >
-            Create one
+            Sign in
           </Link>
         </>
       }
@@ -86,16 +88,16 @@ export const LoginPage = () => {
           label="Password"
           name="password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           required
           error={fieldErrors.password}
         />
         <AuthFormError message={requestError} />
         <AuthSubmitButton
-          icon={LogIn}
-          idleLabel="Sign in"
-          pendingLabel="Signing in..."
-          isPending={loginMutation.isPending}
+          icon={UserPlus}
+          idleLabel="Create account"
+          pendingLabel="Creating account..."
+          isPending={registerMutation.isPending}
         />
       </form>
     </AuthLayout>
