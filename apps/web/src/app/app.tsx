@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import EditorPage from './editor/editor-page';
-import { ConfirmEmailPage } from './auth/confirm-email-page';
-import { LoginPage } from './auth/login-page';
-import { RegisterPage } from './auth/register-page';
-import { DiagramsPage } from './diagrams/diagrams-page';
+import { ConfirmEmailPage } from '../features/auth/pages/confirm-email-page';
+import { LoginPage } from '../features/auth/pages/login-page';
+import { RegisterPage } from '../features/auth/pages/register-page';
+import { DiagramsPage } from '../features/diagrams/pages/diagrams-page';
+import EditorPage from '../features/editor/pages/editor-page';
 
 export function App() {
   return (
