@@ -27,6 +27,7 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     ownerId,
     name,
     folderId,
+    snapshot,
   }: CreateDiagramRepositoryInput): Promise<DiagramRecord> {
     if (folderId) {
       const folder = await this.prisma.folder.findUnique({
@@ -46,6 +47,10 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
         ownerId,
         name,
         folderId: folderId ?? null,
+        snapshot:
+          snapshot === undefined
+            ? undefined
+            : (snapshot as Prisma.InputJsonValue),
       },
       select: {
         id: true,

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { DeleteDiagramConfirmation } from './delete-diagram-confirmation';
 import { MoveDiagramSelect } from './move-diagram-select';
 import { RenameDiagramForm } from './rename-diagram-form';
+import { DuplicateDiagramButton } from './duplicate-diagram-button';
 
 type DiagramListItemProps = {
   diagram: DiagramSummaryResponse;
@@ -52,6 +53,8 @@ export const DiagramListItem = ({ diagram, folders }: DiagramListItemProps) => {
           <Pencil className="size-4" aria-hidden="true" />
           Rename
         </button>
+
+        <DuplicateDiagramButton diagramId={diagram.id} />
 
         <button
           className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-red-300 px-3 text-sm font-medium text-red-700 hover:bg-red-50"

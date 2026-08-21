@@ -56,6 +56,15 @@ export class DiagramController {
     return this.diagramService.createDiagram(user.sub, input);
   }
 
+  @Post(':diagramId/duplicate')
+  duplicateDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<DiagramSummaryResponse> {
+    return this.diagramService.duplicateDiagram(user.sub, params.diagramId);
+  }
+
   @Get(':diagramId')
   getDiagram(
     @CurrentUser() user: AccessTokenPayload,

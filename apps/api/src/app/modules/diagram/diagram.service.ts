@@ -7,6 +7,7 @@ import {
 import {
   DIAGRAM_REPOSITORY_PORT,
   DiagramRepositoryPort,
+  type DiagramRecord,
 } from '@diagram-flow/api-ports';
 import {
   CreateDiagramInput,
@@ -27,6 +28,22 @@ import {
   DiagramVersionConflictError,
 } from './errors/diagram.error';
 
+const DIAGRAM_NAME_MAX_LENGTH = 150;
+const DUPLICATE_NAME_SUFFIX = ' copy';
+
+const toDiagramSummaryResponse = (
+  diagram: DiagramRecord,
+): DiagramSummaryResponse => {
+  return diagramSummaryResponseSchema.parse({
+    id: diagram.id,
+    name: diagram.name,
+    folderId: diagram.folderId,
+    version: diagram.version,
+    createdAt: diagram.createdAt.toISOString(),
+    updatedAt: diagram.updatedAt.toISOString(),
+  });
+};
+
 @Injectable()
 export class DiagramService {
   constructor(
@@ -42,14 +59,7 @@ export class DiagramService {
         folderId: input.folderId,
       });
 
-      return diagramSummaryResponseSchema.parse({
-        id: diagram.id,
-        name: diagram.name,
-        folderId: diagram.folderId,
-        version: diagram.version,
-        createdAt: diagram.createdAt.toISOString(),
-        updatedAt: diagram.updatedAt.toISOString(),
-      });
+      return toDiagramSummaryResponse(diagram);
     } catch (error: unknown) {
       if (error instanceof DiagramFolderNotFoundError) {
         throw new NotFoundException('Folder not found');
@@ -118,14 +128,7 @@ export class DiagramService {
         folderId: input.folderId,
       });
 
-      return diagramSummaryResponseSchema.parse({
-        id: updatedDiagram.id,
-        name: updatedDiagram.name,
-        folderId: updatedDiagram.folderId,
-        version: updatedDiagram.version,
-        createdAt: updatedDiagram.createdAt.toISOString(),
-        updatedAt: updatedDiagram.updatedAt.toISOString(),
-      });
+      return toDiagramSummaryResponse(updatedDiagram);
     } catch (error: unknown) {
       if (error instanceof DiagramFolderNotFoundError) {
         throw new NotFoundException('Folder not found');
@@ -174,6 +177,40 @@ export class DiagramService {
     } catch (error: unknown) {
       if (error instanceof DiagramNotFoundError) {
         throw new NotFoundException('Diagram not found');
+      }
+      throw error;
+    }
+  }
+
+  async duplicateDiagram(
+    userId: string,
+    diagramId: string,
+  ): Promise<DiagramSummaryResponse> {
+    const sourceDiagram = await this.diagramRepository.findByIdForOwner({
+      ownerId: userId,
+      diagramId,
+    });
+
+    if (!sourceDiagram) {
+      throw new NotFoundException('Diagram not found');
+    }
+
+    const availableNameLength =
+      DIAGRAM_NAME_MAX_LENGTH - DUPLICATE_NAME_SUFFIX.length;
+    const duplicateName = `${sourceDiagram.name.slice(0, availableNameLength)}${DUPLICATE_NAME_SUFFIX}`;
+
+    try {
+      const duplicateDiagram = await this.diagramRepository.createForOwner({
+        ownerId: userId,
+        name: duplicateName,
+        folderId: sourceDiagram.folderId ?? undefined,
+        snapshot: sourceDiagram.snapshot,
+      });
+
+      return toDiagramSummaryResponse(duplicateDiagram);
+    } catch (error: unknown) {
+      if (error instanceof DiagramFolderNotFoundError) {
+        throw new NotFoundException('Folder not found');
       }
       throw error;
     }

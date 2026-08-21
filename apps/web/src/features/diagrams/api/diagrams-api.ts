@@ -65,6 +65,22 @@ export const updateDiagram = async (
   return diagramSummaryResponseSchema.parse(payload);
 };
 
+export const duplicateDiagram = async (
+  diagramId: string,
+): Promise<DiagramSummaryResponse> => {
+  const response = await apiRequest(`/api/diagrams/${diagramId}/duplicate`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    await throwApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+
+  return diagramSummaryResponseSchema.parse(payload);
+};
+
 export const deleteDiagram = async (diagramId: string): Promise<void> => {
   const response = await apiRequest(`/api/diagrams/${diagramId}`, {
     method: 'DELETE',

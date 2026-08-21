@@ -6,6 +6,7 @@ import {
   deleteDiagram,
   listDiagrams,
   updateDiagram,
+  duplicateDiagram,
 } from '../api/diagrams-api';
 import { folderQueryKeys } from './folder-queries';
 
@@ -58,6 +59,24 @@ export const useDeleteDiagramMutation = (diagramId: string) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: diagramQueryKeys.all }),
         queryClient.invalidateQueries({ queryKey: folderQueryKeys.all }),
+      ]);
+    },
+  });
+};
+
+export const useDuplicateDiagramMutation = (diagramId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => duplicateDiagram(diagramId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: diagramQueryKeys.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: folderQueryKeys.all,
+        }),
       ]);
     },
   });

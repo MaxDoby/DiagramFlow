@@ -60,6 +60,85 @@ describe('DiagramService', () => {
     });
   });
 
+  it('duplicates a diagram for the authenticated owner', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const sourceDiagramId = '22222222-2222-4222-8222-222222222222';
+    const duplicatedDiagramId = '44444444-4444-4444-8444-444444444444';
+    const folderId = '33333333-3333-4333-8333-333333333333';
+    const sourceCreatedAt = new Date('2030-01-01T10:00:00.000Z');
+    const sourceUpdatedAt = new Date('2030-01-01T11:00:00.000Z');
+    const duplicatedAt = new Date('2030-01-01T12:00:00.000Z');
+    const snapshot = {
+      nodes: [],
+      edges: [],
+      viewport: {
+        x: 0,
+        y: 0,
+        zoom: 1,
+      },
+    };
+
+    diagramRepositoryMock.findByIdForOwner.mockResolvedValue({
+      id: sourceDiagramId,
+      name: 'Flow 1',
+      folderId,
+      snapshot,
+      version: 3,
+      createdAt: sourceCreatedAt,
+      updatedAt: sourceUpdatedAt,
+    });
+
+    diagramRepositoryMock.createForOwner.mockResolvedValue({
+      id: duplicatedDiagramId,
+      name: 'Flow 1 copy',
+      folderId,
+      version: 0,
+      createdAt: duplicatedAt,
+      updatedAt: duplicatedAt,
+    });
+
+    const result = await service.duplicateDiagram(userId, sourceDiagramId);
+
+    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId: sourceDiagramId,
+    });
+
+    expect(diagramRepositoryMock.createForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      name: 'Flow 1 copy',
+      folderId,
+      snapshot,
+    });
+
+    expect(result).toEqual({
+      id: duplicatedDiagramId,
+      name: 'Flow 1 copy',
+      folderId,
+      version: 0,
+      createdAt: duplicatedAt.toISOString(),
+      updatedAt: duplicatedAt.toISOString(),
+    });
+  });
+
+  it('throws NotFoundException when duplicating a diagram not owned by the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const diagramId = '22222222-2222-4222-8222-222222222222';
+
+    diagramRepositoryMock.findByIdForOwner.mockResolvedValue(null);
+
+    await expect(
+      service.duplicateDiagram(userId, diagramId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
+      ownerId: userId,
+      diagramId,
+    });
+
+    expect(diagramRepositoryMock.createForOwner).not.toHaveBeenCalled();
+  });
+
   it('throws NotFoundException when the folder is not owned by the user', async () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const folderId = '33333333-3333-4333-8333-333333333333';

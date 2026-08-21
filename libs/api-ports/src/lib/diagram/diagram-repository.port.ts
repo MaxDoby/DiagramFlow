@@ -37,6 +37,7 @@ export type CreateDiagramRepositoryInput = {
   ownerId: string;
   name: string;
   folderId?: string;
+  snapshot?: unknown;
 };
 
 export type UpdateDiagramRepositoryInput = {
