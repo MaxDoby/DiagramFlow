@@ -230,6 +230,20 @@ export class AuthService {
     };
   }
 
+  async logout(refreshToken: string): Promise<void> {
+    const tokenHash = this.hashRefreshToken(refreshToken);
+
+    await this.prisma.refreshSession.updateMany({
+      where: {
+        tokenHash,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+  }
+
   async register(input: RegisterInput): Promise<RegisterResponse> {
     const passwordHash = await hash(input.password, PASSWORD_SALT_ROUNDS);
 

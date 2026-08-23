@@ -1,5 +1,7 @@
-import { Plus, Workflow, UserRound } from 'lucide-react';
+import { Plus, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ProfileLink } from '../../profile/components/profile-link';
+import { LogoutButton } from '../../auth/components/logout-button';
 
 type DashboardHeaderProps = {
   isCreating: boolean;
@@ -20,15 +22,8 @@ export const DashboardHeader = ({
       </Link>
 
       <div className="flex items-center gap-2">
-        <Link
-          className="flex size-10 shrink-0 items-center justify-center
-      rounded-md border border-zinc-300 bg-white hover:bg-zinc-100"
-          to="/profile"
-          aria-label="Profile"
-          title="Profile"
-        >
-          <UserRound className="size-5" aria-hidden="true" />
-        </Link>
+        <ProfileLink />
+        <LogoutButton />
 
         <button
           className="flex size-10 shrink-0 items-center justify-center gap-2

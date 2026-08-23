@@ -1,5 +1,6 @@
 import { Background, Controls, Panel, ReactFlow } from '@xyflow/react';
-
+import { LogoutButton } from '../../auth/components/logout-button';
+import { ProfileLink } from '../../profile/components/profile-link';
 import { useEditorStore } from '../store/editor-store';
 import { EditorToolbar } from './editor-toolbar';
 
@@ -42,6 +43,11 @@ export const EditorCanvas = ({
           onAddNode={addNode}
           onSave={onSave}
         />
+      </Panel>
+
+      <Panel position="top-right" className="flex gap-2">
+        <ProfileLink />
+        <LogoutButton />
       </Panel>
 
       {saveError ? (

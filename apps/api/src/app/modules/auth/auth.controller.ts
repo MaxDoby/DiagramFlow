@@ -49,6 +49,15 @@ export class AuthController {
     });
   }
 
+  private clearRefreshTokenCookie(response: Response): void {
+    response.clearCookie('diagramflow_refresh_token', {
+      httpOnly: true,
+      secure: this.configService.get<string>('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      path: '/api/auth',
+    });
+  }
+
   @Post('register')
   register(
     @Body(new ZodValidationPipe(registerSchema))
@@ -89,6 +98,22 @@ export class AuthController {
       result.refreshTokenExpiresAt,
     );
     return result.response;
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('logout')
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const refreshToken = request.cookies?.diagramflow_refresh_token;
+
+    try {
+      if (typeof refreshToken === 'string' && refreshToken.length > 0)
+        await this.authService.logout(refreshToken);
+    } finally {
+      this.clearRefreshTokenCookie(response);
+    }
   }
 
   @HttpCode(HttpStatus.OK)

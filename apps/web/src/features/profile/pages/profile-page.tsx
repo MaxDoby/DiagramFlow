@@ -11,6 +11,7 @@ import { AvatarForm } from '../components/avatar-form';
 import { ChangePasswordForm } from '../components/change-password-form';
 import { ProfileForm } from '../components/profile-form';
 import { useProfileQuery } from '../queries/profile-queries';
+import { LogoutButton } from '../../auth/components/logout-button';
 
 export const ProfilePage = () => {
   const profileQuery = useProfileQuery();
@@ -89,15 +90,21 @@ export const ProfilePage = () => {
             DiagramFlow
           </Link>
 
-          <Link
-            className="flex h-10 items-center gap-2 rounded-md
-              border border-zinc-300 bg-white px-3 text-sm font-medium
-              hover:bg-zinc-100"
-            to="/diagrams"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Diagrams
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              className="flex size-10 items-center justify-center gap-2
+      rounded-md border border-zinc-300 bg-white text-sm font-medium
+      hover:bg-zinc-100 sm:h-10 sm:w-auto sm:px-3"
+              to="/diagrams"
+              aria-label="Diagrams"
+              title="Diagrams"
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Diagrams</span>
+            </Link>
+
+            <LogoutButton />
+          </div>
         </div>
       </header>
 
