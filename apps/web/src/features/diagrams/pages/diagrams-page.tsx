@@ -9,9 +9,11 @@ import {
   DiagramsLoadingState,
 } from '../components/diagrams-page-state';
 import { FolderNavigation } from '../components/folder-navigation';
+import { SharedDiagramList } from '../components/shared-diagram-list';
 import {
   useCreateDiagramMutation,
   useDiagramsQuery,
+  useSharedDiagramsQuery,
 } from '../queries/diagram-queries';
 import { useFoldersQuery } from '../queries/folder-queries';
 
@@ -21,25 +23,40 @@ export const DiagramsPage = () => {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const selectedFolderId = searchParams.get('folderId') ?? undefined;
   const diagramsQuery = useDiagramsQuery(selectedFolderId);
+  const sharedDiagramsQuery = useSharedDiagramsQuery();
   const foldersQuery = useFoldersQuery();
   const createDiagramMutation = useCreateDiagramMutation();
 
-  if (diagramsQuery.isPending || foldersQuery.isPending) {
+  if (
+    diagramsQuery.isPending ||
+    sharedDiagramsQuery.isPending ||
+    foldersQuery.isPending
+  ) {
     return <DiagramsLoadingState />;
   }
 
-  if (diagramsQuery.isError || foldersQuery.isError) {
+  if (
+    diagramsQuery.isError ||
+    sharedDiagramsQuery.isError ||
+    foldersQuery.isError
+  ) {
     const message =
       diagramsQuery.error?.message ??
+      sharedDiagramsQuery.error?.message ??
       foldersQuery.error?.message ??
       'Unable to load dashboard data';
 
     return (
       <DiagramsErrorState
         message={message}
-        isRetrying={diagramsQuery.isFetching || foldersQuery.isFetching}
+        isRetrying={
+          diagramsQuery.isFetching ||
+          sharedDiagramsQuery.isFetching ||
+          foldersQuery.isFetching
+        }
         onRetry={() => {
           void diagramsQuery.refetch();
+          void sharedDiagramsQuery.refetch();
           void foldersQuery.refetch();
         }}
       />
@@ -105,6 +122,11 @@ export const DiagramsPage = () => {
           diagrams={diagramsQuery.data}
           folders={foldersQuery.data}
         />
+      </section>
+
+      <section className="mx-auto max-w-6xl border-t border-zinc-200 px-5 py-8">
+        <h2 className="text-xl font-semibold">Shared with me</h2>
+        <SharedDiagramList diagrams={sharedDiagramsQuery.data} />
       </section>
     </main>
   );

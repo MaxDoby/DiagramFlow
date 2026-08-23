@@ -7,6 +7,8 @@ import {
   type DiagramSummaryResponse,
   type UpdateDiagramInput,
   updateDiagramSchema,
+  shareDiagramSchema,
+  type ShareDiagramInput,
 } from '@diagram-flow/contracts';
 
 import { apiRequest } from '../../../shared/api/api-client';
@@ -19,6 +21,17 @@ export const listDiagrams = async (
     ? `/api/diagrams?${new URLSearchParams({ folderId })}`
     : '/api/diagrams';
   const response = await apiRequest(path);
+
+  if (!response.ok) {
+    await throwApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+  return diagramListResponseSchema.parse(payload);
+};
+
+export const listSharedDiagrams = async (): Promise<DiagramListResponse> => {
+  const response = await apiRequest('/api/diagrams/shared');
 
   if (!response.ok) {
     await throwApiError(response);
@@ -79,6 +92,25 @@ export const duplicateDiagram = async (
   const payload: unknown = await response.json();
 
   return diagramSummaryResponseSchema.parse(payload);
+};
+
+export const shareDiagram = async (
+  diagramId: string,
+  input: ShareDiagramInput,
+): Promise<void> => {
+  const validatedInput = shareDiagramSchema.parse(input);
+  const response = await apiRequest(
+    `/api/diagrams/${diagramId}/collaborators`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validatedInput),
+    },
+  );
+
+  if (!response.ok) {
+    await throwApiError(response);
+  }
 };
 
 export const deleteDiagram = async (diagramId: string): Promise<void> => {

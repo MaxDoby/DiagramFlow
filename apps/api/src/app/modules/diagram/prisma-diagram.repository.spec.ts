@@ -49,8 +49,8 @@ describe('PrismaDiagramRepository', () => {
       updatedAt,
     });
 
-    const result = await repository.saveSnapshotForOwner({
-      ownerId,
+    const result = await repository.saveSnapshotForUser({
+      userId: ownerId,
       diagramId,
       snapshot,
       expectedVersion: 0,
@@ -59,7 +59,7 @@ describe('PrismaDiagramRepository', () => {
     expect(prismaServiceMock.diagram.update).toHaveBeenCalledWith({
       where: {
         id: diagramId,
-        ownerId,
+        OR: [{ ownerId }, { collaborators: { some: { userId: ownerId } } }],
         version: 0,
       },
       data: {
@@ -94,8 +94,8 @@ describe('PrismaDiagramRepository', () => {
     prismaServiceMock.diagram.findUnique.mockResolvedValue(null);
 
     await expect(
-      repository.saveSnapshotForOwner({
-        ownerId,
+      repository.saveSnapshotForUser({
+        userId: ownerId,
         diagramId,
         snapshot: {
           nodes: [],
@@ -137,8 +137,8 @@ describe('PrismaDiagramRepository', () => {
     });
 
     await expect(
-      repository.saveSnapshotForOwner({
-        ownerId,
+      repository.saveSnapshotForUser({
+        userId: ownerId,
         diagramId,
         snapshot: {
           nodes: [],

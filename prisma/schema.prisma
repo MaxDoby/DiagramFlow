@@ -15,17 +15,18 @@ datasource db {
 }
 
 model User {
-  id               String           @id @default(uuid()) @db.Uuid
-  email            String           @unique @db.VarChar(320)
-  passwordHash     String           @map("password_hash") @db.VarChar(255)
-  name             String?          @db.VarChar(100)
-  avatarUrl        String?          @map("avatar_url") @db.Text
-  emailConfirmedAt DateTime?        @map("email_confirmed_at") @db.Timestamptz(3)
-  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
-  refreshSessions  RefreshSession[]
-  folders          Folder[]
-  diagrams         Diagram[]
+  id                    String                @id @default(uuid()) @db.Uuid
+  email                 String                @unique @db.VarChar(320)
+  passwordHash          String                @map("password_hash") @db.VarChar(255)
+  name                  String?               @db.VarChar(100)
+  avatarUrl             String?               @map("avatar_url") @db.Text
+  emailConfirmedAt      DateTime?             @map("email_confirmed_at") @db.Timestamptz(3)
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  refreshSessions       RefreshSession[]
+  folders               Folder[]
+  diagrams              Diagram[]
+  diagramCollaborations DiagramCollaborator[]
 
   @@map("users")
 }
@@ -59,18 +60,33 @@ model Folder {
 }
 
 model Diagram {
-  id        String   @id @default(uuid()) @db.Uuid
-  ownerId   String   @map("owner_id") @db.Uuid
-  folderId  String?  @map("folder_id") @db.Uuid
-  name      String   @db.VarChar(150)
-  snapshot  Json     @default("{}") @db.JsonB
-  version   Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  folder    Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  id            String                @id @default(uuid()) @db.Uuid
+  ownerId       String                @map("owner_id") @db.Uuid
+  folderId      String?               @map("folder_id") @db.Uuid
+  name          String                @db.VarChar(150)
+  snapshot      Json                  @default("{}") @db.JsonB
+  version       Int                   @default(0)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  owner         User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder        Folder?               @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  collaborators DiagramCollaborator[]
 
   @@index([ownerId, updatedAt])
   @@index([folderId])
   @@map("diagrams")
+}
+
+model DiagramCollaborator {
+  id        String   @id @default(uuid()) @db.Uuid
+  diagramId String   @map("diagram_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  diagram Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([diagramId, userId])
+  @@index([userId, createdAt])
+  @@map("diagram_collaborators")
 }

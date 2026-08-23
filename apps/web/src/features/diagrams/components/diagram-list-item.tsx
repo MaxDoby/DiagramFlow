@@ -2,7 +2,7 @@ import type {
   DiagramSummaryResponse,
   FolderListResponse,
 } from '@diagram-flow/contracts';
-import { FileText, Pencil, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -10,6 +10,7 @@ import { DeleteDiagramConfirmation } from './delete-diagram-confirmation';
 import { MoveDiagramSelect } from './move-diagram-select';
 import { RenameDiagramForm } from './rename-diagram-form';
 import { DuplicateDiagramButton } from './duplicate-diagram-button';
+import { ShareDiagramForm } from './share-diagram-form';
 
 type DiagramListItemProps = {
   diagram: DiagramSummaryResponse;
@@ -19,6 +20,7 @@ type DiagramListItemProps = {
 export const DiagramListItem = ({ diagram, folders }: DiagramListItemProps) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   if (isRenaming) {
     return (
@@ -57,6 +59,16 @@ export const DiagramListItem = ({ diagram, folders }: DiagramListItemProps) => {
         <DuplicateDiagramButton diagramId={diagram.id} />
 
         <button
+          className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium hover:bg-zinc-100"
+          type="button"
+          aria-expanded={isSharing}
+          onClick={() => setIsSharing((isOpen) => !isOpen)}
+        >
+          <UserPlus className="size-4" aria-hidden="true" />
+          Share
+        </button>
+
+        <button
           className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-red-300 px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           type="button"
           onClick={() => setIsConfirmingDelete(true)}
@@ -65,6 +77,13 @@ export const DiagramListItem = ({ diagram, folders }: DiagramListItemProps) => {
           Delete
         </button>
       </div>
+
+      {isSharing && (
+        <ShareDiagramForm
+          diagramId={diagram.id}
+          onCancel={() => setIsSharing(false)}
+        />
+      )}
 
       {isConfirmingDelete && (
         <DeleteDiagramConfirmation

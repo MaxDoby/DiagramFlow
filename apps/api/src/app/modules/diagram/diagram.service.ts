@@ -21,11 +21,15 @@ import {
   SaveDiagramSnapshotInput,
   SaveDiagramSnapshotResponse,
   saveDiagramSnapshotResponseSchema,
+  ShareDiagramInput,
 } from '@diagram-flow/contracts';
 import {
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
   DiagramVersionConflictError,
+  DiagramAlreadySharedError,
+  DiagramCollaboratorNotFoundError,
+  DiagramOwnerCannotBeCollaboratorError,
 } from './errors/diagram.error';
 
 const DIAGRAM_NAME_MAX_LENGTH = 150;
@@ -93,8 +97,8 @@ export class DiagramService {
     userId: string,
     diagramId: string,
   ): Promise<DiagramDetailsResponse> {
-    const diagram = await this.diagramRepository.findByIdForOwner({
-      ownerId: userId,
+    const diagram = await this.diagramRepository.findByIdForUser({
+      userId,
       diagramId,
     });
 
@@ -146,8 +150,8 @@ export class DiagramService {
     input: SaveDiagramSnapshotInput,
   ): Promise<SaveDiagramSnapshotResponse> {
     try {
-      const savedSnapshot = await this.diagramRepository.saveSnapshotForOwner({
-        ownerId: userId,
+      const savedSnapshot = await this.diagramRepository.saveSnapshotForUser({
+        userId,
         diagramId,
         snapshot: input.snapshot,
         expectedVersion: input.expectedVersion,
@@ -166,6 +170,47 @@ export class DiagramService {
       }
       throw error;
     }
+  }
+
+  async shareDiagram(
+    userId: string,
+    diagramId: string,
+    input: ShareDiagramInput,
+  ): Promise<void> {
+    try {
+      await this.diagramRepository.shareWithUser({
+        ownerId: userId,
+        diagramId,
+        collaboratorEmail: input.email,
+      });
+    } catch (error: unknown) {
+      if (error instanceof DiagramNotFoundError) {
+        throw new NotFoundException('Diagram not found');
+      }
+
+      if (error instanceof DiagramCollaboratorNotFoundError) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (error instanceof DiagramAlreadySharedError) {
+        throw new ConflictException('Diagram is already shared with this user');
+      }
+
+      if (error instanceof DiagramOwnerCannotBeCollaboratorError) {
+        throw new ConflictException(
+          'Diagram owner cannot be added as collaborator',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async listSharedDiagrams(userId: string): Promise<DiagramListResponse> {
+    const diagrams = await this.diagramRepository.findAllSharedWithUser({
+      userId,
+    });
+
+    return diagrams.map(toDiagramSummaryResponse);
   }
 
   async deleteDiagram(userId: string, diagramId: string): Promise<void> {

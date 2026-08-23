@@ -20,6 +20,12 @@ export const updateDiagramSchema = z
 
 export type UpdateDiagramInput = z.infer<typeof updateDiagramSchema>;
 
+export const shareDiagramSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+});
+
+export type ShareDiagramInput = z.infer<typeof shareDiagramSchema>;
+
 const diagramNodeSchema = z
   .object({
     id: z.string().min(1),

@@ -32,6 +32,8 @@ import {
   SaveDiagramSnapshotInput,
   SaveDiagramSnapshotResponse,
   saveDiagramSnapshotSchema,
+  ShareDiagramInput,
+  shareDiagramSchema,
 } from '@diagram-flow/contracts';
 
 @Controller('diagrams')
@@ -46,6 +48,13 @@ export class DiagramController {
     query: DiagramListQuery,
   ): Promise<DiagramListResponse> {
     return this.diagramService.listDiagrams(user.sub, query.folderId);
+  }
+
+  @Get('shared')
+  listSharedDiagrams(
+    @CurrentUser() user: AccessTokenPayload,
+  ): Promise<DiagramListResponse> {
+    return this.diagramService.listSharedDiagrams(user.sub);
   }
 
   @Post()
@@ -63,6 +72,16 @@ export class DiagramController {
     params: DiagramParams,
   ): Promise<DiagramSummaryResponse> {
     return this.diagramService.duplicateDiagram(user.sub, params.diagramId);
+  }
+
+  @Post(':diagramId/collaborators')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  shareDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(shareDiagramSchema)) input: ShareDiagramInput,
+  ): Promise<void> {
+    return this.diagramService.shareDiagram(user.sub, params.diagramId, input);
   }
 
   @Get(':diagramId')

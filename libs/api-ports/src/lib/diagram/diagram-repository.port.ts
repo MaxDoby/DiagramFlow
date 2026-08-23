@@ -17,10 +17,17 @@ export interface DiagramRepositoryPort {
   findByIdForOwner(
     input: FindDiagramByIdRepositoryInput,
   ): Promise<DiagramDetailsRecord | null>;
+  findByIdForUser(
+    input: FindDiagramByIdForUserRepositoryInput,
+  ): Promise<DiagramDetailsRecord | null>;
   updateForOwner(input: UpdateDiagramRepositoryInput): Promise<DiagramRecord>;
-  saveSnapshotForOwner(
+  saveSnapshotForUser(
     input: SaveDiagramSnapshotRepositoryInput,
   ): Promise<SaveDiagramSnapshotRecord>;
+  shareWithUser(input: ShareDiagramRepositoryInput): Promise<void>;
+  findAllSharedWithUser(
+    input: FindAllSharedDiagramsRepositoryInput,
+  ): Promise<DiagramRecord[]>;
   deleteForOwner(input: DeleteDiagramRepositoryInput): Promise<void>;
 }
 
@@ -30,6 +37,11 @@ export type DiagramDetailsRecord = DiagramRecord & {
 
 export type FindDiagramByIdRepositoryInput = {
   ownerId: string;
+  diagramId: string;
+};
+
+export type FindDiagramByIdForUserRepositoryInput = {
+  userId: string;
   diagramId: string;
 };
 
@@ -48,7 +60,7 @@ export type UpdateDiagramRepositoryInput = {
 };
 
 export type SaveDiagramSnapshotRepositoryInput = {
-  ownerId: string;
+  userId: string;
   diagramId: string;
   snapshot: unknown;
   expectedVersion: number;
@@ -67,4 +79,14 @@ export type DeleteDiagramRepositoryInput = {
 export type FindAllDiagramsRepositoryInput = {
   ownerId: string;
   folderId?: string;
+};
+
+export type ShareDiagramRepositoryInput = {
+  ownerId: string;
+  diagramId: string;
+  collaboratorEmail: string;
+};
+
+export type FindAllSharedDiagramsRepositoryInput = {
+  userId: string;
 };

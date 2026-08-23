@@ -11,11 +11,17 @@ import {
   DeleteDiagramRepositoryInput,
   SaveDiagramSnapshotRecord,
   SaveDiagramSnapshotRepositoryInput,
+  FindAllSharedDiagramsRepositoryInput,
+  ShareDiagramRepositoryInput,
+  FindDiagramByIdForUserRepositoryInput,
 } from '@diagram-flow/api-ports';
 import {
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
   DiagramVersionConflictError,
+  DiagramAlreadySharedError,
+  DiagramCollaboratorNotFoundError,
+  DiagramOwnerCannotBeCollaboratorError,
 } from './errors/diagram.error';
 import { Prisma } from '../../../generated/prisma/client';
 
@@ -116,8 +122,8 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     }
   }
 
-  async saveSnapshotForOwner({
-    ownerId,
+  async saveSnapshotForUser({
+    userId,
     diagramId,
     snapshot,
     expectedVersion,
@@ -126,7 +132,18 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
       return await this.prisma.diagram.update({
         where: {
           id: diagramId,
-          ownerId,
+          OR: [
+            {
+              ownerId: userId,
+            },
+            {
+              collaborators: {
+                some: {
+                  userId,
+                },
+              },
+            },
+          ],
           version: expectedVersion,
         },
         data: {
@@ -148,7 +165,18 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
         const diagram = await this.prisma.diagram.findUnique({
           where: {
             id: diagramId,
-            ownerId,
+            OR: [
+              {
+                ownerId: userId,
+              },
+              {
+                collaborators: {
+                  some: {
+                    userId,
+                  },
+                },
+              },
+            ],
           },
           select: {
             id: true,
@@ -185,6 +213,86 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     }
   }
 
+  async shareWithUser({
+    ownerId,
+    diagramId,
+    collaboratorEmail,
+  }: ShareDiagramRepositoryInput): Promise<void> {
+    const [diagram, collaborator] = await this.prisma.$transaction([
+      this.prisma.diagram.findUnique({
+        where: {
+          id: diagramId,
+          ownerId,
+        },
+        select: {
+          id: true,
+        },
+      }),
+      this.prisma.user.findUnique({
+        where: {
+          email: collaboratorEmail,
+        },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
+
+    if (!diagram) {
+      throw new DiagramNotFoundError();
+    }
+
+    if (!collaborator) {
+      throw new DiagramCollaboratorNotFoundError();
+    }
+
+    if (collaborator.id === ownerId) {
+      throw new DiagramOwnerCannotBeCollaboratorError();
+    }
+
+    try {
+      await this.prisma.diagramCollaborator.create({
+        data: {
+          diagramId,
+          userId: collaborator.id,
+        },
+      });
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new DiagramAlreadySharedError();
+      }
+      throw error;
+    }
+  }
+
+  async findAllSharedWithUser({
+    userId,
+  }: FindAllSharedDiagramsRepositoryInput): Promise<DiagramRecord[]> {
+    return this.prisma.diagram.findMany({
+      where: {
+        collaborators: {
+          some: {
+            userId,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      select: {
+        id: true,
+        name: true,
+        folderId: true,
+        version: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async findAllForOwner(
     input: FindAllDiagramsRepositoryInput,
   ): Promise<DiagramRecord[]> {
@@ -205,6 +313,38 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     });
 
     return diagramsList;
+  }
+
+  async findByIdForUser({
+    userId,
+    diagramId,
+  }: FindDiagramByIdForUserRepositoryInput): Promise<DiagramDetailsRecord | null> {
+    return this.prisma.diagram.findUnique({
+      where: {
+        id: diagramId,
+        OR: [
+          {
+            ownerId: userId,
+          },
+          {
+            collaborators: {
+              some: {
+                userId,
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        folderId: true,
+        snapshot: true,
+        version: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async findByIdForOwner({

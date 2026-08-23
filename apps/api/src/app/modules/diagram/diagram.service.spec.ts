@@ -16,8 +16,11 @@ describe('DiagramService', () => {
       createForOwner: jest.fn(),
       findAllForOwner: jest.fn(),
       findByIdForOwner: jest.fn(),
+      findByIdForUser: jest.fn(),
       updateForOwner: jest.fn(),
-      saveSnapshotForOwner: jest.fn(),
+      saveSnapshotForUser: jest.fn(),
+      shareWithUser: jest.fn(),
+      findAllSharedWithUser: jest.fn(),
       deleteForOwner: jest.fn(),
     };
 
@@ -212,7 +215,7 @@ describe('DiagramService', () => {
     const updatedAt = new Date('2030-01-01T11:00:00.000Z');
     const snapshot = {};
 
-    diagramRepositoryMock.findByIdForOwner.mockResolvedValue({
+    diagramRepositoryMock.findByIdForUser.mockResolvedValue({
       id: diagramId,
       name: 'Flow 1',
       folderId: null,
@@ -223,8 +226,8 @@ describe('DiagramService', () => {
     });
     const result = await service.getDiagram(userId, diagramId);
 
-    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
-      ownerId: userId,
+    expect(diagramRepositoryMock.findByIdForUser).toHaveBeenCalledWith({
+      userId,
       diagramId,
     });
     expect(result).toEqual({
@@ -250,14 +253,14 @@ describe('DiagramService', () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const diagramId = '22222222-2222-4222-8222-222222222222';
 
-    diagramRepositoryMock.findByIdForOwner.mockResolvedValue(null);
+    diagramRepositoryMock.findByIdForUser.mockResolvedValue(null);
 
     await expect(service.getDiagram(userId, diagramId)).rejects.toBeInstanceOf(
       NotFoundException,
     );
 
-    expect(diagramRepositoryMock.findByIdForOwner).toHaveBeenCalledWith({
-      ownerId: userId,
+    expect(diagramRepositoryMock.findByIdForUser).toHaveBeenCalledWith({
+      userId,
       diagramId,
     });
   });
@@ -344,7 +347,7 @@ describe('DiagramService', () => {
       },
     };
 
-    diagramRepositoryMock.saveSnapshotForOwner.mockResolvedValue({
+    diagramRepositoryMock.saveSnapshotForUser.mockResolvedValue({
       version: 1,
       updatedAt,
     });
@@ -354,8 +357,8 @@ describe('DiagramService', () => {
       expectedVersion: 0,
     });
 
-    expect(diagramRepositoryMock.saveSnapshotForOwner).toHaveBeenCalledWith({
-      ownerId: userId,
+    expect(diagramRepositoryMock.saveSnapshotForUser).toHaveBeenCalledWith({
+      userId,
       diagramId,
       snapshot,
       expectedVersion: 0,
@@ -371,7 +374,7 @@ describe('DiagramService', () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const diagramId = '22222222-2222-4222-8222-222222222222';
 
-    diagramRepositoryMock.saveSnapshotForOwner.mockRejectedValue(
+    diagramRepositoryMock.saveSnapshotForUser.mockRejectedValue(
       new DiagramNotFoundError(),
     );
 
@@ -395,7 +398,7 @@ describe('DiagramService', () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const diagramId = '22222222-2222-4222-8222-222222222222';
 
-    diagramRepositoryMock.saveSnapshotForOwner.mockRejectedValue(
+    diagramRepositoryMock.saveSnapshotForUser.mockRejectedValue(
       new DiagramVersionConflictError(),
     );
 

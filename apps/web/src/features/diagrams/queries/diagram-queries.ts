@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UpdateDiagramInput } from '@diagram-flow/contracts';
+import type {
+  UpdateDiagramInput,
+  ShareDiagramInput,
+} from '@diagram-flow/contracts';
 
 import {
   createDiagram,
@@ -7,6 +10,8 @@ import {
   listDiagrams,
   updateDiagram,
   duplicateDiagram,
+  listSharedDiagrams,
+  shareDiagram,
 } from '../api/diagrams-api';
 import { folderQueryKeys } from './folder-queries';
 
@@ -14,6 +19,7 @@ export const diagramQueryKeys = {
   all: ['diagrams'] as const,
   list: (folderId?: string) =>
     [...diagramQueryKeys.all, folderId ?? 'all'] as const,
+  shared: ['diagrams', 'shared'] as const,
 };
 
 export const useDiagramsQuery = (folderId?: string) =>
@@ -22,8 +28,19 @@ export const useDiagramsQuery = (folderId?: string) =>
     queryFn: () => listDiagrams(folderId),
   });
 
+export const useSharedDiagramsQuery = () =>
+  useQuery({
+    queryKey: diagramQueryKeys.shared,
+    queryFn: listSharedDiagrams,
+  });
+
 export const useCreateDiagramMutation = () =>
   useMutation({ mutationFn: createDiagram });
+
+export const useShareDiagramMutation = (diagramId: string) =>
+  useMutation({
+    mutationFn: (input: ShareDiagramInput) => shareDiagram(diagramId, input),
+  });
 
 export const useRenameDiagramMutation = (diagramId: string) => {
   const queryClient = useQueryClient();
