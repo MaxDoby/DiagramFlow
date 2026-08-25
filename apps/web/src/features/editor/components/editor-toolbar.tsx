@@ -1,11 +1,36 @@
-import { Plus, Save } from 'lucide-react';
+import {
+  Save,
+  Circle,
+  Diamond,
+  Square,
+  StickyNote,
+  Triangle,
+  Type,
+  type LucideIcon,
+} from 'lucide-react';
+import { type DiagramShapeType } from '@diagram-flow/contracts';
+
+type ShapeTool = {
+  shapeType: DiagramShapeType;
+  label: string;
+  icon: LucideIcon;
+};
 
 type EditorToolbarProps = {
   isDirty: boolean;
   isSaving: boolean;
-  onAddNode: () => void;
+  onAddNode: (shapeType: DiagramShapeType) => void;
   onSave: () => void;
 };
+
+const shapeTools: ShapeTool[] = [
+  { shapeType: 'rectangle', label: 'Rectangle', icon: Square },
+  { shapeType: 'circle', label: 'Circle', icon: Circle },
+  { shapeType: 'diamond', label: 'Diamond', icon: Diamond },
+  { shapeType: 'triangle', label: 'Triangle', icon: Triangle },
+  { shapeType: 'text', label: 'Text', icon: Type },
+  { shapeType: 'sticky-note', label: 'Sticky note', icon: StickyNote },
+];
 
 export const EditorToolbar = ({
   isDirty,
@@ -14,14 +39,18 @@ export const EditorToolbar = ({
   onSave,
 }: EditorToolbarProps) => (
   <>
-    <button
-      type="button"
-      className="editor-toolbar__button"
-      onClick={onAddNode}
-    >
-      <Plus size={18} aria-hidden="true" />
-      <span>Add node</span>
-    </button>
+    {shapeTools.map(({ shapeType, label, icon: Icon }) => (
+      <button
+        key={shapeType}
+        type="button"
+        className="editor-toolbar__button"
+        onClick={() => onAddNode(shapeType)}
+        aria-label={`Add ${label}`}
+        title={`Add ${label}`}
+      >
+        <Icon size={18} aria-hidden="true" />
+      </button>
+    ))}
     <button
       type="button"
       className="editor-toolbar__button"

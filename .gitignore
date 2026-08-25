@@ -54,3 +54,4 @@ vitest.config.*.timestamp*
 /apps/api/src/generated/prisma/
 # User uploads
 /uploads/
+.playwright-mcp/

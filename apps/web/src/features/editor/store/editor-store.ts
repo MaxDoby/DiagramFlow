@@ -1,4 +1,7 @@
-import type { DiagramSnapshot } from '@diagram-flow/contracts';
+import {
+  type DiagramSnapshot,
+  type DiagramShapeType,
+} from '@diagram-flow/contracts';
 import {
   addEdge,
   applyEdgeChanges,
@@ -27,12 +30,21 @@ type EditorStore = {
   onEdgesChange: (changes: EdgeChange<EditorEdge>[]) => void;
   onConnect: (connection: Connection) => void;
   onMoveEnd: OnMoveEnd;
-  addNode: () => void;
+  addNode: (shapeType: DiagramShapeType) => void;
   markSaved: (version: number, savedRevision: number) => void;
   setSaveError: (message: string | null) => void;
 };
 
 const cleanViewport: Viewport = { x: 0, y: 0, zoom: 1 };
+
+const defaultShapeLabels: Record<DiagramShapeType, string> = {
+  rectangle: 'Rectangle',
+  circle: 'Circle',
+  diamond: 'Diamond',
+  triangle: 'Triangle',
+  text: 'Text',
+  'sticky-note': 'Sticky note',
+};
 
 const dirtyState = (state: EditorStore) => ({
   editRevision: state.editRevision + 1,
@@ -97,16 +109,17 @@ export const useEditorStore = create<EditorStore>((set) => ({
       ...(event ? dirtyState(state) : {}),
     })),
 
-  addNode: () =>
+  addNode: (shapeType) =>
     set((state) => {
       const nodeIndex = state.nodes.length;
       const node: EditorNode = {
         id: crypto.randomUUID(),
+        type: 'shape',
         position: {
           x: 80 + (nodeIndex % 4) * 180,
           y: 80 + Math.floor(nodeIndex / 4) * 100,
         },
-        data: { label: `Node ${nodeIndex + 1}` },
+        data: { label: defaultShapeLabels[shapeType], shapeType },
       };
 
       return {

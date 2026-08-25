@@ -1,8 +1,15 @@
-import { Background, Controls, Panel, ReactFlow } from '@xyflow/react';
+import {
+  Background,
+  Controls,
+  Panel,
+  ReactFlow,
+  type NodeTypes,
+} from '@xyflow/react';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
 import { useEditorStore } from '../store/editor-store';
 import { EditorToolbar } from './editor-toolbar';
+import { EditorShapeNode } from './nodes/editor-shape-node';
 
 type EditorCanvasProps = {
   isDirty: boolean;
@@ -10,6 +17,10 @@ type EditorCanvasProps = {
   saveError: string | null;
   onSave: () => void;
 };
+
+const nodeTypes = {
+  shape: EditorShapeNode,
+} satisfies NodeTypes;
 
 export const EditorCanvas = ({
   isDirty,
@@ -35,6 +46,7 @@ export const EditorCanvas = ({
       onConnect={onConnect}
       defaultViewport={viewport}
       onMoveEnd={onMoveEnd}
+      nodeTypes={nodeTypes}
     >
       <Panel position="top-left" className="editor-toolbar">
         <EditorToolbar

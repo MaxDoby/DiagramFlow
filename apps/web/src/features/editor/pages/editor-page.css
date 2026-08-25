@@ -57,3 +57,123 @@
   color: #475569;
   font-size: 14px;
 }
+
+.editor-shape {
+  position: relative;
+  width: 140px;
+  height: 80px;
+  color: #18181b;
+}
+
+.editor-shape__surface {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: 2px solid #52525b;
+  background: #ffffff;
+}
+
+.editor-shape__label {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.editor-shape .react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  background: #0f766e;
+}
+
+.editor-shape--selected .editor-shape__surface {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgb(13 148 136 / 25%);
+}
+
+.editor-shape--rectangle .editor-shape__surface {
+  border-radius: 4px;
+}
+
+.editor-shape--circle {
+  width: 96px;
+  height: 96px;
+}
+
+.editor-shape--circle .editor-shape__surface {
+  border-radius: 50%;
+}
+
+.editor-shape--diamond {
+  width: 112px;
+  height: 92px;
+}
+
+.editor-shape--triangle {
+  width: 120px;
+  height: 100px;
+}
+
+.editor-shape--diamond .editor-shape__surface,
+.editor-shape--triangle .editor-shape__surface,
+.editor-shape--sticky-note .editor-shape__surface {
+  border: 0;
+  background: #52525b;
+}
+
+.editor-shape--diamond .editor-shape__surface {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.editor-shape--triangle .editor-shape__surface {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  padding-top: 38px;
+}
+
+.editor-shape--diamond .editor-shape__surface::before,
+.editor-shape--triangle .editor-shape__surface::before,
+.editor-shape--sticky-note .editor-shape__surface::before {
+  position: absolute;
+  inset: 2px;
+  background: #ffffff;
+  clip-path: inherit;
+  content: '';
+}
+
+.editor-shape--text {
+  height: 44px;
+}
+
+.editor-shape--text .editor-shape__surface {
+  border-color: transparent;
+  background: transparent;
+}
+
+.editor-shape--sticky-note {
+  width: 130px;
+  height: 100px;
+}
+
+.editor-shape--sticky-note .editor-shape__surface {
+  background: #a16207;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+
+.editor-shape--sticky-note .editor-shape__surface::before {
+  background: #fef08a;
+}
+
+.editor-shape--selected.editor-shape--diamond .editor-shape__surface,
+.editor-shape--selected.editor-shape--triangle .editor-shape__surface,
+.editor-shape--selected.editor-shape--sticky-note .editor-shape__surface {
+  background: #0d9488;
+}

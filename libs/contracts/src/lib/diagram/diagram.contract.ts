@@ -1,5 +1,16 @@
 import * as z from 'zod';
 
+export const diagramShapeTypeSchema = z.enum([
+  'rectangle',
+  'circle',
+  'diamond',
+  'triangle',
+  'text',
+  'sticky-note',
+]);
+
+export type DiagramShapeType = z.infer<typeof diagramShapeTypeSchema>;
+
 const diagramNameSchema = z.string().trim().min(1).max(150);
 
 export const createDiagramSchema = z.object({
@@ -26,14 +37,22 @@ export const shareDiagramSchema = z.object({
 
 export type ShareDiagramInput = z.infer<typeof shareDiagramSchema>;
 
+const diagramNodeDataSchema = z
+  .object({
+    label: z.string(),
+    shapeType: diagramShapeTypeSchema.optional(),
+  })
+  .catchall(z.json());
+
 const diagramNodeSchema = z
   .object({
     id: z.string().min(1),
+    type: z.literal('shape').optional(),
     position: z.object({
       x: z.number(),
       y: z.number(),
     }),
-    data: z.record(z.string(), z.json()),
+    data: diagramNodeDataSchema,
   })
   .catchall(z.json());
 
