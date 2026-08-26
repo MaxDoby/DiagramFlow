@@ -52,6 +52,8 @@ const diagramNodeSchema = z
       x: z.number(),
       y: z.number(),
     }),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
     data: diagramNodeDataSchema,
   })
   .catchall(z.json());

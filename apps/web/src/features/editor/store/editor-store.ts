@@ -46,6 +46,18 @@ const defaultShapeLabels: Record<DiagramShapeType, string> = {
   'sticky-note': 'Sticky note',
 };
 
+const defaultShapeDimensions: Record<
+  DiagramShapeType,
+  { width: number; height: number }
+> = {
+  rectangle: { width: 140, height: 80 },
+  circle: { width: 96, height: 96 },
+  diamond: { width: 112, height: 92 },
+  triangle: { width: 120, height: 100 },
+  text: { width: 140, height: 44 },
+  'sticky-note': { width: 130, height: 100 },
+};
+
 const dirtyState = (state: EditorStore) => ({
   editRevision: state.editRevision + 1,
   isDirty: true,
@@ -112,6 +124,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   addNode: (shapeType) =>
     set((state) => {
       const nodeIndex = state.nodes.length;
+      const dimensions = defaultShapeDimensions[shapeType];
       const node: EditorNode = {
         id: crypto.randomUUID(),
         type: 'shape',
@@ -119,6 +132,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
           x: 80 + (nodeIndex % 4) * 180,
           y: 80 + Math.floor(nodeIndex / 4) * 100,
         },
+        width: dimensions.width,
+        height: dimensions.height,
         data: { label: defaultShapeLabels[shapeType], shapeType },
       };
 
