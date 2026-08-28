@@ -17,9 +17,15 @@ import { create } from 'zustand';
 export type EditorNode = DiagramSnapshot['nodes'][number];
 export type EditorEdge = DiagramSnapshot['edges'][number];
 
+type EditorClipboard = {
+  nodes: EditorNode[];
+  edges: EditorEdge[];
+};
+
 type EditorStore = {
   nodes: EditorNode[];
   edges: EditorEdge[];
+  clipboard: EditorClipboard | null;
   viewport: Viewport;
   diagramVersion: number;
   editRevision: number;
@@ -31,11 +37,14 @@ type EditorStore = {
   onConnect: (connection: Connection) => void;
   onMoveEnd: OnMoveEnd;
   addNode: (shapeType: DiagramShapeType) => void;
+  copySelection: () => void;
+  pasteClipboard: () => void;
   markSaved: (version: number, savedRevision: number) => void;
   setSaveError: (message: string | null) => void;
 };
 
 const cleanViewport: Viewport = { x: 0, y: 0, zoom: 1 };
+const PASTE_OFFSET = 32;
 
 const defaultShapeLabels: Record<DiagramShapeType, string> = {
   rectangle: 'Rectangle',
@@ -67,6 +76,7 @@ const dirtyState = (state: EditorStore) => ({
 export const useEditorStore = create<EditorStore>((set) => ({
   nodes: [],
   edges: [],
+  clipboard: null,
   viewport: cleanViewport,
   diagramVersion: 0,
   editRevision: 0,
@@ -139,6 +149,91 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
       return {
         nodes: [...state.nodes, node],
+        ...dirtyState(state),
+      };
+    }),
+
+  copySelection: () =>
+    set((state) => {
+      const selectedNodes = state.nodes.filter((node) => node.selected);
+
+      if (selectedNodes.length === 0) {
+        return state;
+      }
+
+      const selectedNodeIds = new Set(selectedNodes.map((node) => node.id));
+
+      const selectedEdges = state.edges.filter(
+        (edge) =>
+          selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target),
+      );
+
+      return {
+        clipboard: structuredClone({
+          nodes: selectedNodes,
+          edges: selectedEdges,
+        }),
+      };
+    }),
+
+  pasteClipboard: () =>
+    set((state) => {
+      if (!state.clipboard || state.clipboard.nodes.length === 0) {
+        return state;
+      }
+
+      const nodeIdMap = new Map<string, string>();
+
+      const pastedNodes: EditorNode[] = state.clipboard.nodes.map((node) => {
+        const newNodeId = crypto.randomUUID();
+
+        nodeIdMap.set(node.id, newNodeId);
+
+        return {
+          ...structuredClone(node),
+          id: newNodeId,
+          position: {
+            x: node.position.x + PASTE_OFFSET,
+            y: node.position.y + PASTE_OFFSET,
+          },
+          selected: true,
+        };
+      });
+
+      const pastedEdges: EditorEdge[] = state.clipboard.edges.flatMap(
+        (edge) => {
+          const source = nodeIdMap.get(edge.source);
+          const target = nodeIdMap.get(edge.target);
+
+          if (!source || !target) {
+            return [];
+          }
+
+          return [
+            {
+              ...structuredClone(edge),
+              id: crypto.randomUUID(),
+              source,
+              target,
+              selected: true,
+            },
+          ];
+        },
+      );
+
+      return {
+        nodes: [
+          ...state.nodes.map((node) => ({ ...node, selected: false })),
+          ...pastedNodes,
+        ],
+        edges: [
+          ...state.edges.map((edge) => ({ ...edge, selected: false })),
+          ...pastedEdges,
+        ],
+        clipboard: structuredClone({
+          nodes: pastedNodes,
+          edges: pastedEdges,
+        }),
         ...dirtyState(state),
       };
     }),

@@ -10,6 +10,7 @@ import { ProfileLink } from '../../profile/components/profile-link';
 import { useEditorStore } from '../store/editor-store';
 import { EditorToolbar } from './editor-toolbar';
 import { EditorShapeNode } from './nodes/editor-shape-node';
+import { useEditorKeyboardShortcuts } from '../hooks/use-editor-keyboard-shortcuts';
 
 type EditorCanvasProps = {
   isDirty: boolean;
@@ -28,6 +29,7 @@ export const EditorCanvas = ({
   saveError,
   onSave,
 }: EditorCanvasProps) => {
+  useEditorKeyboardShortcuts();
   const nodes = useEditorStore((state) => state.nodes);
   const edges = useEditorStore((state) => state.edges);
   const viewport = useEditorStore((state) => state.viewport);
@@ -47,6 +49,7 @@ export const EditorCanvas = ({
       defaultViewport={viewport}
       onMoveEnd={onMoveEnd}
       nodeTypes={nodeTypes}
+      deleteKeyCode={['Backspace', 'Delete']}
     >
       <Panel position="top-left" className="editor-toolbar">
         <EditorToolbar
