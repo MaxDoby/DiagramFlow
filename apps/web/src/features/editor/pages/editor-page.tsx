@@ -40,6 +40,7 @@ export const EditorPage = () => {
   return (
     <main className="editor-page">
       <EditorCanvas
+        diagramId={diagramId}
         isDirty={isDirty}
         isSaving={isSaving}
         saveError={saveError}

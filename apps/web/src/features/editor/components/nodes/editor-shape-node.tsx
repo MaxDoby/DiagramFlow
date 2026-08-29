@@ -7,7 +7,10 @@ import {
 } from '@xyflow/react';
 import type { EditorNode } from '../../store/editor-store';
 
-type ShapeNode = Node<Pick<EditorNode['data'], 'label' | 'shapeType'>, 'shape'>;
+type ShapeNode = Node<
+  Pick<EditorNode['data'], 'label' | 'shapeType' | 'imageUrl'>,
+  'shape'
+>;
 
 export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
   const shapeType = data.shapeType ?? 'rectangle';
@@ -37,7 +40,16 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
         />
 
         <div className="editor-shape__surface">
-          <span className="editor-shape__label">{data.label}</span>
+          {shapeType === 'image' && data.imageUrl ? (
+            <img
+              className="editor-shape__image"
+              src={data.imageUrl}
+              alt={data.label}
+              draggable={false}
+            />
+          ) : (
+            <span className="editor-shape__label">{data.label}</span>
+          )}
         </div>
 
         <Handle

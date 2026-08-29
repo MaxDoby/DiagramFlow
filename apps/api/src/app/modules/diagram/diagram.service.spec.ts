@@ -6,10 +6,14 @@ import {
   DiagramNotFoundError,
   DiagramVersionConflictError,
 } from './errors/diagram.error';
+import { DiagramImageStorageService } from './image/diagram-image-storage.service';
 
 describe('DiagramService', () => {
   let service: DiagramService;
   let diagramRepositoryMock: jest.Mocked<DiagramRepositoryPort>;
+  let diagramImageStorageMock: jest.Mocked<
+    Pick<DiagramImageStorageService, 'save'>
+  >;
 
   beforeEach(() => {
     diagramRepositoryMock = {
@@ -24,7 +28,14 @@ describe('DiagramService', () => {
       deleteForOwner: jest.fn(),
     };
 
-    service = new DiagramService(diagramRepositoryMock);
+    diagramImageStorageMock = {
+      save: jest.fn(),
+    };
+
+    service = new DiagramService(
+      diagramRepositoryMock,
+      diagramImageStorageMock as unknown as DiagramImageStorageService,
+    );
   });
 
   it('creates a diagram for the authenticated user', async () => {

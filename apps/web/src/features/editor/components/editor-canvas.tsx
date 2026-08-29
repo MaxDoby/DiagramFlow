@@ -13,6 +13,7 @@ import { EditorShapeNode } from './nodes/editor-shape-node';
 import { useEditorKeyboardShortcuts } from '../hooks/use-editor-keyboard-shortcuts';
 
 type EditorCanvasProps = {
+  diagramId: string;
   isDirty: boolean;
   isSaving: boolean;
   saveError: string | null;
@@ -24,6 +25,7 @@ const nodeTypes = {
 } satisfies NodeTypes;
 
 export const EditorCanvas = ({
+  diagramId,
   isDirty,
   isSaving,
   saveError,
@@ -53,6 +55,7 @@ export const EditorCanvas = ({
     >
       <Panel position="top-left" className="editor-toolbar">
         <EditorToolbar
+          diagramId={diagramId}
           isDirty={isDirty}
           isSaving={isSaving}
           onAddNode={addNode}

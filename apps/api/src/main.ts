@@ -19,8 +19,20 @@ async function bootstrap() {
 
   const avatarsDirectory = resolve(process.cwd(), uploadsRoot, 'avatars');
 
+  const diagramImagesDirectory = resolve(
+    process.cwd(),
+    uploadsRoot,
+    'diagram-images',
+  );
+
   app.useStaticAssets(avatarsDirectory, {
     prefix: '/uploads/avatars/',
+    immutable: true,
+    maxAge: '1y',
+  });
+
+  app.useStaticAssets(diagramImagesDirectory, {
+    prefix: '/uploads/diagram-images/',
     immutable: true,
     maxAge: '1y',
   });

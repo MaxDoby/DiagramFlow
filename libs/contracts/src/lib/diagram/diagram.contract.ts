@@ -6,10 +6,25 @@ export const diagramShapeTypeSchema = z.enum([
   'diamond',
   'triangle',
   'text',
+  'image',
   'sticky-note',
 ]);
 
 export type DiagramShapeType = z.infer<typeof diagramShapeTypeSchema>;
+
+export const diagramImageUrlSchema = z
+  .string()
+  .regex(
+    /^\/uploads\/diagram-images\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp)$/,
+  );
+
+export const uploadDiagramImageResponseSchema = z.object({
+  imageUrl: diagramImageUrlSchema,
+});
+
+export type UploadDiagramImageResponse = z.infer<
+  typeof uploadDiagramImageResponseSchema
+>;
 
 const diagramNameSchema = z.string().trim().min(1).max(150);
 
@@ -41,6 +56,7 @@ const diagramNodeDataSchema = z
   .object({
     label: z.string(),
     shapeType: diagramShapeTypeSchema.optional(),
+    imageUrl: diagramImageUrlSchema.optional(),
   })
   .catchall(z.json());
 

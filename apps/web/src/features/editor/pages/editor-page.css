@@ -58,6 +58,14 @@
   font-size: 14px;
 }
 
+.editor-toolbar__error {
+  align-self: center;
+  max-width: 280px;
+  color: #b91c1c;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
 .editor-shape {
   position: relative;
   width: 100%;
@@ -102,6 +110,21 @@
 
 .editor-shape--rectangle .editor-shape__surface {
   border-radius: 4px;
+}
+
+.editor-shape--image .editor-shape__surface {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.editor-shape__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
 }
 
 .editor-shape--diamond .editor-shape__surface,

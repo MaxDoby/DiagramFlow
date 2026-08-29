@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { type DiagramShapeType } from '@diagram-flow/contracts';
+import { DiagramImageUploadButton } from './diagram-image-upload-button';
 
 type ShapeTool = {
   shapeType: DiagramShapeType;
@@ -17,6 +18,7 @@ type ShapeTool = {
 };
 
 type EditorToolbarProps = {
+  diagramId: string;
   isDirty: boolean;
   isSaving: boolean;
   onAddNode: (shapeType: DiagramShapeType) => void;
@@ -33,6 +35,7 @@ const shapeTools: ShapeTool[] = [
 ];
 
 export const EditorToolbar = ({
+  diagramId,
   isDirty,
   isSaving,
   onAddNode,
@@ -51,6 +54,7 @@ export const EditorToolbar = ({
         <Icon size={18} aria-hidden="true" />
       </button>
     ))}
+    <DiagramImageUploadButton diagramId={diagramId} />
     <button
       type="button"
       className="editor-toolbar__button"

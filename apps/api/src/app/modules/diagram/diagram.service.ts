@@ -22,6 +22,8 @@ import {
   SaveDiagramSnapshotResponse,
   saveDiagramSnapshotResponseSchema,
   ShareDiagramInput,
+  type UploadDiagramImageResponse,
+  uploadDiagramImageResponseSchema,
 } from '@diagram-flow/contracts';
 import {
   DiagramFolderNotFoundError,
@@ -31,6 +33,7 @@ import {
   DiagramCollaboratorNotFoundError,
   DiagramOwnerCannotBeCollaboratorError,
 } from './errors/diagram.error';
+import { DiagramImageStorageService } from './image/diagram-image-storage.service';
 
 const DIAGRAM_NAME_MAX_LENGTH = 150;
 const DUPLICATE_NAME_SUFFIX = ' copy';
@@ -53,6 +56,7 @@ export class DiagramService {
   constructor(
     @Inject(DIAGRAM_REPOSITORY_PORT)
     private readonly diagramRepository: DiagramRepositoryPort,
+    private readonly diagramImageStorage: DiagramImageStorageService,
   ) {}
 
   async createDiagram(userId: string, input: CreateDiagramInput) {
@@ -117,6 +121,25 @@ export class DiagramService {
     });
 
     return response;
+  }
+
+  async uploadImage(
+    userId: string,
+    diagramId: string,
+    file: Express.Multer.File,
+  ): Promise<UploadDiagramImageResponse> {
+    const diagram = await this.diagramRepository.findByIdForUser({
+      userId,
+      diagramId,
+    });
+
+    if (!diagram) {
+      throw new NotFoundException('Diagram not found');
+    }
+
+    const imageUrl = await this.diagramImageStorage.save(file);
+
+    return uploadDiagramImageResponseSchema.parse({ imageUrl });
   }
 
   async updateDiagram(

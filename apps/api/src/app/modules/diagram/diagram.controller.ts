@@ -11,6 +11,9 @@ import {
   HttpCode,
   HttpStatus,
   Put,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -34,7 +37,9 @@ import {
   saveDiagramSnapshotSchema,
   ShareDiagramInput,
   shareDiagramSchema,
+  type UploadDiagramImageResponse,
 } from '@diagram-flow/contracts';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('diagrams')
 @UseGuards(AccessTokenGuard)
@@ -82,6 +87,21 @@ export class DiagramController {
     @Body(new ZodValidationPipe(shareDiagramSchema)) input: ShareDiagramInput,
   ): Promise<void> {
     return this.diagramService.shareDiagram(user.sub, params.diagramId, input);
+  }
+
+  @Post(':diagramId/images')
+  @UseInterceptors(FileInterceptor('image'))
+  uploadImage(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<UploadDiagramImageResponse> {
+    if (!file) {
+      throw new BadRequestException('Diagram image file is required');
+    }
+
+    return this.diagramService.uploadImage(user.sub, params.diagramId, file);
   }
 
   @Get(':diagramId')

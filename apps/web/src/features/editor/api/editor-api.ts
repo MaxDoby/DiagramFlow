@@ -4,8 +4,10 @@ import {
   type SaveDiagramSnapshotInput,
   type SaveDiagramSnapshotResponse,
   saveDiagramSnapshotResponseSchema,
+  type UploadDiagramImageResponse,
+  uploadDiagramImageResponseSchema,
 } from '@diagram-flow/contracts';
-
+import { throwApiError } from '../../../shared/api/throw-api-error';
 import { apiRequest } from '../../../shared/api/api-client';
 
 export class DiagramApiError extends Error {
@@ -30,6 +32,27 @@ export const getDiagram = async (
   const payload: unknown = await response.json();
 
   return diagramDetailsResponseSchema.parse(payload);
+};
+
+export const uploadDiagramImage = async (
+  diagramId: string,
+  image: File,
+): Promise<UploadDiagramImageResponse> => {
+  const formData = new FormData();
+
+  formData.append('image', image);
+
+  const response = await apiRequest(`/api/diagrams/${diagramId}/images`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    await throwApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+  return uploadDiagramImageResponseSchema.parse(payload);
 };
 
 export const saveDiagramSnapshot = async (

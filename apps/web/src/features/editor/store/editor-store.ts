@@ -37,6 +37,7 @@ type EditorStore = {
   onConnect: (connection: Connection) => void;
   onMoveEnd: OnMoveEnd;
   addNode: (shapeType: DiagramShapeType) => void;
+  addImageNode: (imageUrl: string) => void;
   copySelection: () => void;
   pasteClipboard: () => void;
   markSaved: (version: number, savedRevision: number) => void;
@@ -52,6 +53,7 @@ const defaultShapeLabels: Record<DiagramShapeType, string> = {
   diamond: 'Diamond',
   triangle: 'Triangle',
   text: 'Text',
+  image: 'Image',
   'sticky-note': 'Sticky note',
 };
 
@@ -64,7 +66,32 @@ const defaultShapeDimensions: Record<
   diamond: { width: 112, height: 92 },
   triangle: { width: 120, height: 100 },
   text: { width: 140, height: 44 },
+  image: { width: 180, height: 120 },
   'sticky-note': { width: 130, height: 100 },
+};
+
+const createEditorNode = (
+  shapeType: DiagramShapeType,
+  nodeIndex: number,
+  imageUrl?: string,
+): EditorNode => {
+  const dimensions = defaultShapeDimensions[shapeType];
+
+  return {
+    id: crypto.randomUUID(),
+    type: 'shape',
+    position: {
+      x: 80 + (nodeIndex % 4) * 180,
+      y: 80 + Math.floor(nodeIndex / 4) * 100,
+    },
+    width: dimensions.width,
+    height: dimensions.height,
+    data: {
+      label: defaultShapeLabels[shapeType],
+      shapeType,
+      ...(imageUrl ? { imageUrl } : {}),
+    },
+  };
 };
 
 const dirtyState = (state: EditorStore) => ({
@@ -132,26 +159,19 @@ export const useEditorStore = create<EditorStore>((set) => ({
     })),
 
   addNode: (shapeType) =>
-    set((state) => {
-      const nodeIndex = state.nodes.length;
-      const dimensions = defaultShapeDimensions[shapeType];
-      const node: EditorNode = {
-        id: crypto.randomUUID(),
-        type: 'shape',
-        position: {
-          x: 80 + (nodeIndex % 4) * 180,
-          y: 80 + Math.floor(nodeIndex / 4) * 100,
-        },
-        width: dimensions.width,
-        height: dimensions.height,
-        data: { label: defaultShapeLabels[shapeType], shapeType },
-      };
+    set((state) => ({
+      nodes: [...state.nodes, createEditorNode(shapeType, state.nodes.length)],
+      ...dirtyState(state),
+    })),
 
-      return {
-        nodes: [...state.nodes, node],
-        ...dirtyState(state),
-      };
-    }),
+  addImageNode: (imageUrl) =>
+    set((state) => ({
+      nodes: [
+        ...state.nodes,
+        createEditorNode('image', state.nodes.length, imageUrl),
+      ],
+      ...dirtyState(state),
+    })),
 
   copySelection: () =>
     set((state) => {
