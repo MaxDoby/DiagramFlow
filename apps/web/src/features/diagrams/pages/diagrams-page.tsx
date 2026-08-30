@@ -16,11 +16,16 @@ import {
   useSharedDiagramsQuery,
 } from '../queries/diagram-queries';
 import { useFoldersQuery } from '../queries/folder-queries';
+import { type FolderResponse } from '@diagram-flow/contracts';
+import { DeleteFolderConfirmation } from '../components/delete-folder-confirmation';
 
 export const DiagramsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<FolderResponse | null>(
+    null,
+  );
   const selectedFolderId = searchParams.get('folderId') ?? undefined;
   const diagramsQuery = useDiagramsQuery(selectedFolderId);
   const sharedDiagramsQuery = useSharedDiagramsQuery();
@@ -94,10 +99,29 @@ export const DiagramsPage = () => {
           onSelectFolder={(folderId) =>
             setSearchParams(folderId ? { folderId } : {})
           }
-          onToggleCreateFolder={() =>
-            setIsCreateFolderOpen((isOpen) => !isOpen)
-          }
+          onRequestDelete={(folder) => {
+            setFolderToDelete(folder);
+            setIsCreateFolderOpen(false);
+          }}
+          onToggleCreateFolder={() => {
+            setFolderToDelete(null);
+            setIsCreateFolderOpen((isOpen) => !isOpen);
+          }}
         />
+
+        {folderToDelete && (
+          <DeleteFolderConfirmation
+            folder={folderToDelete}
+            onDeleted={() => {
+              if (selectedFolderId === folderToDelete.id) {
+                setSearchParams({});
+              }
+
+              setFolderToDelete(null);
+            }}
+            onCancel={() => setFolderToDelete(null)}
+          />
+        )}
 
         {isCreateFolderOpen && (
           <CreateFolderForm

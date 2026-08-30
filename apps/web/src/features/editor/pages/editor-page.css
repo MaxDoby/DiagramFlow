@@ -5,6 +5,22 @@
   background: #f4f6f8;
 }
 
+.editor-canvas--arrow {
+  --xy-connectionline-stroke: #334155;
+  --xy-connectionline-stroke-width: 2;
+}
+
+.editor-page .react-flow__edge-straight {
+  --xy-edge-stroke: #334155;
+  --xy-edge-stroke-width: 2;
+}
+
+.editor-page .react-flow__arrowhead polyline.arrowclosed {
+  stroke: #334155;
+  stroke-width: 1.5;
+  fill: #334155;
+}
+
 .editor-toolbar {
   display: flex;
   gap: 8px;
@@ -34,6 +50,44 @@
 .editor-toolbar__button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
+}
+
+.editor-toolbar__connection-tools {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #e2e8f0;
+}
+
+.editor-toolbar__connection-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  place-items: center;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.editor-toolbar__connection-button:hover {
+  background: #f8fafc;
+  color: #111827;
+}
+
+.editor-toolbar__connection-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.editor-toolbar__connection-button--active {
+  background: #ffffff;
+  color: #0f766e;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 16%);
 }
 
 .editor-page--message {

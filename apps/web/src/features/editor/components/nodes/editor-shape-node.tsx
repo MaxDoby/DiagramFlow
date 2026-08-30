@@ -33,10 +33,17 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
           .join(' ')}
       >
         <Handle
-          id="target"
-          type="target"
-          position={Position.Left}
-          aria-label="Incoming connection"
+          id="top"
+          type="source"
+          position={Position.Top}
+          aria-label="Top connection handle"
+        />
+
+        <Handle
+          id="right"
+          type="source"
+          position={Position.Right}
+          aria-label="Right connection handle"
         />
 
         <div className="editor-shape__surface">
@@ -53,10 +60,17 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
         </div>
 
         <Handle
-          id="source"
+          id="bottom"
           type="source"
-          position={Position.Right}
-          aria-label="Outgoing connection"
+          position={Position.Bottom}
+          aria-label="Bottom connection handle"
+        />
+
+        <Handle
+          id="left"
+          type="source"
+          position={Position.Left}
+          aria-label="Left connection handle"
         />
       </div>
     </>

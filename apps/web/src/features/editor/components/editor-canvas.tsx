@@ -4,6 +4,8 @@ import {
   Panel,
   ReactFlow,
   type NodeTypes,
+  ConnectionLineType,
+  ConnectionMode,
 } from '@xyflow/react';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
@@ -40,14 +42,26 @@ export const EditorCanvas = ({
   const onConnect = useEditorStore((state) => state.onConnect);
   const onMoveEnd = useEditorStore((state) => state.onMoveEnd);
   const addNode = useEditorStore((state) => state.addNode);
+  const activeConnectionType = useEditorStore(
+    (state) => state.activeConnectionType,
+  );
 
   return (
     <ReactFlow
+      className={
+        activeConnectionType === 'arrow' ? 'editor-canvas--arrow' : undefined
+      }
       nodes={nodes}
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      connectionMode={ConnectionMode.Loose}
+      connectionLineType={
+        activeConnectionType === 'arrow'
+          ? ConnectionLineType.Straight
+          : ConnectionLineType.Bezier
+      }
       defaultViewport={viewport}
       onMoveEnd={onMoveEnd}
       nodeTypes={nodeTypes}

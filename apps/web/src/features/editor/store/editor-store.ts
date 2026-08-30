@@ -1,4 +1,5 @@
 import {
+  type DiagramConnectionType,
   type DiagramSnapshot,
   type DiagramShapeType,
 } from '@diagram-flow/contracts';
@@ -11,6 +12,7 @@ import {
   type NodeChange,
   type OnMoveEnd,
   type Viewport,
+  MarkerType,
 } from '@xyflow/react';
 import { create } from 'zustand';
 
@@ -31,6 +33,7 @@ type EditorStore = {
   editRevision: number;
   isDirty: boolean;
   saveError: string | null;
+  activeConnectionType: DiagramConnectionType;
   hydrate: (snapshot: DiagramSnapshot, version: number) => void;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<EditorEdge>[]) => void;
@@ -38,6 +41,7 @@ type EditorStore = {
   onMoveEnd: OnMoveEnd;
   addNode: (shapeType: DiagramShapeType) => void;
   addImageNode: (imageUrl: string) => void;
+  setActiveConnectionType: (connectionType: DiagramConnectionType) => void;
   copySelection: () => void;
   pasteClipboard: () => void;
   markSaved: (version: number, savedRevision: number) => void;
@@ -94,6 +98,25 @@ const createEditorNode = (
   };
 };
 
+const createEditorEdge = (
+  connection: Connection,
+  connectionType: DiagramConnectionType,
+): EditorEdge => ({
+  id: crypto.randomUUID(),
+  ...connection,
+  type: connectionType === 'arrow' ? 'straight' : 'default',
+  data: {
+    connectionType,
+  },
+  ...(connectionType === 'arrow'
+    ? {
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+      }
+    : {}),
+});
+
 const dirtyState = (state: EditorStore) => ({
   editRevision: state.editRevision + 1,
   isDirty: true,
@@ -109,6 +132,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   editRevision: 0,
   isDirty: false,
   saveError: null,
+  activeConnectionType: 'connector',
 
   hydrate: (snapshot, version) =>
     set({
@@ -148,7 +172,10 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   onConnect: (connection) =>
     set((state) => ({
-      edges: addEdge(connection, state.edges),
+      edges: addEdge(
+        createEditorEdge(connection, state.activeConnectionType),
+        state.edges,
+      ),
       ...dirtyState(state),
     })),
 
@@ -172,6 +199,11 @@ export const useEditorStore = create<EditorStore>((set) => ({
       ],
       ...dirtyState(state),
     })),
+
+  setActiveConnectionType: (connectionType) =>
+    set({
+      activeConnectionType: connectionType,
+    }),
 
   copySelection: () =>
     set((state) => {

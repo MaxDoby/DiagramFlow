@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { type DiagramShapeType } from '@diagram-flow/contracts';
 import { DiagramImageUploadButton } from './diagram-image-upload-button';
+import { ConnectionTypeSelector } from './connection-type-selector';
 
 type ShapeTool = {
   shapeType: DiagramShapeType;
@@ -55,6 +56,7 @@ export const EditorToolbar = ({
       </button>
     ))}
     <DiagramImageUploadButton diagramId={diagramId} />
+    <ConnectionTypeSelector />
     <button
       type="button"
       className="editor-toolbar__button"

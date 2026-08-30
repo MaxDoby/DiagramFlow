@@ -12,6 +12,9 @@ export const diagramShapeTypeSchema = z.enum([
 
 export type DiagramShapeType = z.infer<typeof diagramShapeTypeSchema>;
 
+export const diagramConnectionTypeSchema = z.enum(['connector', 'arrow']);
+export type DiagramConnectionType = z.infer<typeof diagramConnectionTypeSchema>;
+
 export const diagramImageUrlSchema = z
   .string()
   .regex(
@@ -74,11 +77,19 @@ const diagramNodeSchema = z
   })
   .catchall(z.json());
 
+const diagramEdgeDataSchema = z
+  .object({
+    connectionType: diagramConnectionTypeSchema,
+  })
+  .catchall(z.json());
+
 const diagramEdgeSchema = z
   .object({
     id: z.string().min(1),
+    type: z.enum(['default', 'straight']).optional(),
     source: z.string().min(1),
     target: z.string().min(1),
+    data: diagramEdgeDataSchema.optional(),
   })
   .catchall(z.json());
 

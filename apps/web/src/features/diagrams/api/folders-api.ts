@@ -42,3 +42,13 @@ export const createFolder = async (
 
   return folderResponseSchema.parse(payload);
 };
+
+export const deleteFolder = async (folderId: string): Promise<void> => {
+  const response = await apiRequest(`/api/folders/${folderId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    await throwApiError(response);
+  }
+};
