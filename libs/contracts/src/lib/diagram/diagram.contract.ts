@@ -8,6 +8,7 @@ export const diagramShapeTypeSchema = z.enum([
   'text',
   'image',
   'sticky-note',
+  'container',
 ]);
 
 export type DiagramShapeType = z.infer<typeof diagramShapeTypeSchema>;

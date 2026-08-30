@@ -59,6 +59,7 @@ const defaultShapeLabels: Record<DiagramShapeType, string> = {
   text: 'Text',
   image: 'Image',
   'sticky-note': 'Sticky note',
+  container: 'Container',
 };
 
 const defaultShapeDimensions: Record<
@@ -72,6 +73,7 @@ const defaultShapeDimensions: Record<
   text: { width: 140, height: 44 },
   image: { width: 180, height: 120 },
   'sticky-note': { width: 130, height: 100 },
+  container: { width: 360, height: 240 },
 };
 
 const createEditorNode = (

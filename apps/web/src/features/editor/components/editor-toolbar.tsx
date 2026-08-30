@@ -6,6 +6,7 @@ import {
   StickyNote,
   Triangle,
   Type,
+  PanelsTopLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { type DiagramShapeType } from '@diagram-flow/contracts';
@@ -33,6 +34,7 @@ const shapeTools: ShapeTool[] = [
   { shapeType: 'triangle', label: 'Triangle', icon: Triangle },
   { shapeType: 'text', label: 'Text', icon: Type },
   { shapeType: 'sticky-note', label: 'Sticky note', icon: StickyNote },
+  { shapeType: 'container', label: 'Container', icon: PanelsTopLeft },
 ];
 
 export const EditorToolbar = ({

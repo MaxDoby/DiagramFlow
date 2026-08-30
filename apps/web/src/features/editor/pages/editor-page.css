@@ -166,6 +166,20 @@
   border-radius: 4px;
 }
 
+.editor-shape--container .editor-shape__surface {
+  align-items: flex-start;
+  justify-content: flex-start;
+  border: 2px dashed #71717a;
+  border-radius: 4px;
+  background: rgb(244 244 245 / 60%);
+}
+
+.editor-shape--container .editor-shape__label {
+  color: #52525b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .editor-shape--image .editor-shape__surface {
   overflow: hidden;
   padding: 0;
