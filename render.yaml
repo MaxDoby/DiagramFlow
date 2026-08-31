@@ -1,0 +1,64 @@
+services:
+  - type: web
+    name: diagramflow-api-maxdoby
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: feat/editor-foundation
+    buildCommand: npm ci && npx prisma generate && npx nx build api
+    startCommand: npx prisma migrate deploy && node dist/apps/api/main.js
+    healthCheckPath: /api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: diagramflow-db-maxdoby
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: diagramflow-redis-maxdoby
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL_SECONDS
+        value: 900
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: 30
+      - key: EMAIL_VERIFICATION_OTP_SECRET
+        generateValue: true
+      - key: EMAIL_VERIFICATION_OTP_TTL_SECONDS
+        value: 600
+      - key: EMAIL_VERIFICATION_MAX_ATTEMPTS
+        value: 5
+      - key: EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS
+        value: 60
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: UPLOADS_ROOT
+        value: uploads
+
+  - type: keyvalue
+    name: diagramflow-redis-maxdoby
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: off
+
+databases:
+  - name: diagramflow-db-maxdoby
+    plan: free
+    region: frankfurt
+    databaseName: diagramflow
+    user: diagramflow
+    ipAllowList: []

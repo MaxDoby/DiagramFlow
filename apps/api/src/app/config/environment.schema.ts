@@ -15,6 +15,8 @@ export const environmentSchema = z.looseObject({
     .positive(),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive().max(65535),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASSWORD: z.string().min(1).optional(),
   MAIL_FROM: z.email(),
   UPLOADS_ROOT: z.string().trim().min(1),
 });

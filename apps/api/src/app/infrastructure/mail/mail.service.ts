@@ -15,6 +15,8 @@ export class MailService {
   constructor(private readonly configService: ConfigService) {
     const host = this.configService.getOrThrow<string>('SMTP_HOST');
     const port = this.configService.getOrThrow<number>('SMTP_PORT');
+    const user = this.configService.get<string>('SMTP_USER');
+    const password = this.configService.get<string>('SMTP_PASSWORD');
 
     this.from = this.configService.getOrThrow<string>('MAIL_FROM');
 
@@ -22,6 +24,14 @@ export class MailService {
       host,
       port,
       secure: port === 465,
+      ...(user && password
+        ? {
+            auth: {
+              user,
+              pass: password,
+            },
+          }
+        : {}),
     });
   }
 
