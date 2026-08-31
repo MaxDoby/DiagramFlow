@@ -3,6 +3,7 @@ import { EditorPage } from './editor-page';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach } from 'vitest';
 import { getDiagram, saveDiagramSnapshot } from '../api/editor-api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../api/editor-api', () => ({
   getDiagram: vi.fn(),
@@ -33,12 +34,25 @@ const diagramResponse = {
 };
 
 const renderEditor = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+
   render(
-    <MemoryRouter initialEntries={[`/diagrams/${diagramId}/editor`]}>
-      <Routes>
-        <Route path="/diagrams/:diagramId/editor" element={<EditorPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[`/diagrams/${diagramId}/editor`]}>
+        <Routes>
+          <Route path="/diagrams/:diagramId/editor" element={<EditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 };
 
@@ -56,13 +70,13 @@ describe('EditorPage', () => {
   it('should add a node to the canvas', async () => {
     renderEditor();
 
-    const addNodeButton = await screen.findByRole('button', {
-      name: 'Add node',
+    const addRectangleButton = await screen.findByRole('button', {
+      name: 'Add Rectangle',
     });
 
-    fireEvent.click(addNodeButton);
+    fireEvent.click(addRectangleButton);
 
-    expect(screen.getByText('Node 1')).toBeTruthy();
+    expect(screen.getByText('Rectangle')).toBeTruthy();
   });
 
   it('should render nodes from the loaded snapshot', async () => {
@@ -73,12 +87,24 @@ describe('EditorPage', () => {
         nodes: [
           {
             id: 'node-1',
+            type: 'shape',
             position: {
               x: 120,
               y: 80,
             },
+            width: 140,
+            height: 80,
+            zIndex: 0,
             data: {
               label: 'API Gateway',
+              shapeType: 'rectangle',
+              backgroundColor: '#ffffff',
+              borderColor: '#52525b',
+              borderWidth: 2,
+              opacity: 1,
+              rotation: 0,
+              fontFamily: 'sans',
+              textAlign: 'center',
             },
           },
         ],

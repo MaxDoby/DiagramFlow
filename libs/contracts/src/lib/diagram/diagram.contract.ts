@@ -56,24 +56,36 @@ export const shareDiagramSchema = z.object({
 
 export type ShareDiagramInput = z.infer<typeof shareDiagramSchema>;
 
+const diagramColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const diagramFontFamilySchema = z.enum(['sans', 'serif', 'mono']);
+const diagramTextAlignmentSchema = z.enum(['left', 'center', 'right']);
+
 const diagramNodeDataSchema = z
   .object({
     label: z.string(),
-    shapeType: diagramShapeTypeSchema.optional(),
+    shapeType: diagramShapeTypeSchema,
     imageUrl: diagramImageUrlSchema.optional(),
+    backgroundColor: diagramColorSchema,
+    borderColor: diagramColorSchema,
+    borderWidth: z.number().int().min(0).max(12),
+    opacity: z.number().min(0).max(1),
+    rotation: z.number().min(0).max(359),
+    fontFamily: diagramFontFamilySchema,
+    textAlign: diagramTextAlignmentSchema,
   })
   .catchall(z.json());
 
 const diagramNodeSchema = z
   .object({
     id: z.string().min(1),
-    type: z.literal('shape').optional(),
+    type: z.literal('shape'),
     position: z.object({
       x: z.number(),
       y: z.number(),
     }),
-    width: z.number().positive().optional(),
-    height: z.number().positive().optional(),
+    width: z.number().positive(),
+    height: z.number().positive(),
+    zIndex: z.number().int(),
     data: diagramNodeDataSchema,
   })
   .catchall(z.json());

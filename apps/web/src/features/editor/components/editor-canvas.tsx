@@ -13,6 +13,7 @@ import { useEditorStore } from '../store/editor-store';
 import { EditorToolbar } from './editor-toolbar';
 import { EditorShapeNode } from './nodes/editor-shape-node';
 import { useEditorKeyboardShortcuts } from '../hooks/use-editor-keyboard-shortcuts';
+import { NodePropertiesPanel } from './node-properties-panel';
 
 type EditorCanvasProps = {
   diagramId: string;
@@ -77,9 +78,13 @@ export const EditorCanvas = ({
         />
       </Panel>
 
-      <Panel position="top-right" className="flex gap-2">
-        <ProfileLink />
-        <LogoutButton />
+      <Panel position="top-right" className="editor-sidebar">
+        <div className="editor-sidebar__account-actions">
+          <ProfileLink />
+          <LogoutButton />
+        </div>
+
+        <NodePropertiesPanel />
       </Panel>
 
       {saveError ? (

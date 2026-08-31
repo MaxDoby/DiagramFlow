@@ -19,6 +19,18 @@ import { create } from 'zustand';
 export type EditorNode = DiagramSnapshot['nodes'][number];
 export type EditorEdge = DiagramSnapshot['edges'][number];
 
+type EditableNodeData = Pick<
+  EditorNode['data'],
+  | 'label'
+  | 'backgroundColor'
+  | 'borderColor'
+  | 'borderWidth'
+  | 'opacity'
+  | 'rotation'
+  | 'fontFamily'
+  | 'textAlign'
+>;
+
 type EditorClipboard = {
   nodes: EditorNode[];
   edges: EditorEdge[];
@@ -41,6 +53,7 @@ type EditorStore = {
   onMoveEnd: OnMoveEnd;
   addNode: (shapeType: DiagramShapeType) => void;
   addImageNode: (imageUrl: string) => void;
+  updateNodeData: (nodeId: string, change: Partial<EditableNodeData>) => void;
   setActiveConnectionType: (connectionType: DiagramConnectionType) => void;
   copySelection: () => void;
   pasteClipboard: () => void;
@@ -51,29 +64,80 @@ type EditorStore = {
 const cleanViewport: Viewport = { x: 0, y: 0, zoom: 1 };
 const PASTE_OFFSET = 32;
 
-const defaultShapeLabels: Record<DiagramShapeType, string> = {
-  rectangle: 'Rectangle',
-  circle: 'Circle',
-  diamond: 'Diamond',
-  triangle: 'Triangle',
-  text: 'Text',
-  image: 'Image',
-  'sticky-note': 'Sticky note',
-  container: 'Container',
+type DefaultShapeConfig = {
+  label: string;
+  width: number;
+  height: number;
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: number;
 };
 
-const defaultShapeDimensions: Record<
-  DiagramShapeType,
-  { width: number; height: number }
-> = {
-  rectangle: { width: 140, height: 80 },
-  circle: { width: 96, height: 96 },
-  diamond: { width: 112, height: 92 },
-  triangle: { width: 120, height: 100 },
-  text: { width: 140, height: 44 },
-  image: { width: 180, height: 120 },
-  'sticky-note': { width: 130, height: 100 },
-  container: { width: 360, height: 240 },
+const defaultShapeConfig: Record<DiagramShapeType, DefaultShapeConfig> = {
+  rectangle: {
+    label: 'Rectangle',
+    width: 140,
+    height: 80,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 2,
+  },
+  circle: {
+    label: 'Circle',
+    width: 96,
+    height: 96,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 2,
+  },
+  diamond: {
+    label: 'Diamond',
+    width: 112,
+    height: 92,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 2,
+  },
+  triangle: {
+    label: 'Triangle',
+    width: 120,
+    height: 100,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 2,
+  },
+  text: {
+    label: 'Text',
+    width: 140,
+    height: 44,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 0,
+  },
+  image: {
+    label: 'Image',
+    width: 180,
+    height: 120,
+    backgroundColor: '#ffffff',
+    borderColor: '#52525b',
+    borderWidth: 2,
+  },
+  'sticky-note': {
+    label: 'Sticky note',
+    width: 130,
+    height: 100,
+    backgroundColor: '#fef08a',
+    borderColor: '#a16207',
+    borderWidth: 2,
+  },
+  container: {
+    label: 'Container',
+    width: 360,
+    height: 240,
+    backgroundColor: '#f4f4f5',
+    borderColor: '#71717a',
+    borderWidth: 2,
+  },
 };
 
 const createEditorNode = (
@@ -81,7 +145,7 @@ const createEditorNode = (
   nodeIndex: number,
   imageUrl?: string,
 ): EditorNode => {
-  const dimensions = defaultShapeDimensions[shapeType];
+  const config = defaultShapeConfig[shapeType];
 
   return {
     id: crypto.randomUUID(),
@@ -90,11 +154,19 @@ const createEditorNode = (
       x: 80 + (nodeIndex % 4) * 180,
       y: 80 + Math.floor(nodeIndex / 4) * 100,
     },
-    width: dimensions.width,
-    height: dimensions.height,
+    width: config.width,
+    height: config.height,
+    zIndex: nodeIndex,
     data: {
-      label: defaultShapeLabels[shapeType],
+      label: config.label,
       shapeType,
+      backgroundColor: config.backgroundColor,
+      borderColor: config.borderColor,
+      borderWidth: config.borderWidth,
+      opacity: 1,
+      rotation: 0,
+      fontFamily: 'sans',
+      textAlign: 'center',
       ...(imageUrl ? { imageUrl } : {}),
     },
   };
@@ -199,6 +271,22 @@ export const useEditorStore = create<EditorStore>((set) => ({
         ...state.nodes,
         createEditorNode('image', state.nodes.length, imageUrl),
       ],
+      ...dirtyState(state),
+    })),
+
+  updateNodeData: (nodeId, changes) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                ...changes,
+              },
+            }
+          : node,
+      ),
       ...dirtyState(state),
     })),
 
