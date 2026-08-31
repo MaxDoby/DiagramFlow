@@ -5,7 +5,7 @@ services:
     plan: free
     region: frankfurt
     branch: feat/editor-foundation
-    buildCommand: npm ci && npx prisma generate && npx nx build api
+    buildCommand: npm ci --include=dev && npx prisma generate && npx nx build api
     startCommand: npx prisma migrate deploy && node dist/apps/api/main.js
     healthCheckPath: /api
     envVars:
