@@ -7,6 +7,7 @@ import {
   ConnectionLineType,
   ConnectionMode,
 } from '@xyflow/react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
@@ -28,6 +29,31 @@ const nodeTypes = {
   shape: EditorShapeNode,
 } satisfies NodeTypes;
 
+const EditorProperties = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const panelId = useId();
+
+  return (
+    <div className="editor-properties">
+      <button
+        type="button"
+        className="editor-toolbar__button editor-properties__toggle"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        {isOpen ? 'Close properties' : 'Properties'}
+      </button>
+      <div
+        id={panelId}
+        className={`editor-properties__content${isOpen ? ' editor-properties__content--open' : ''}`}
+      >
+        <NodePropertiesPanel />
+      </div>
+    </div>
+  );
+};
+
 export const EditorCanvas = ({
   diagramId,
   isDirty,
@@ -38,6 +64,10 @@ export const EditorCanvas = ({
   const navigate = useNavigate();
   useEditorKeyboardShortcuts();
   const nodes = useEditorStore((state) => state.nodes);
+  const selectedNodeIds = nodes
+    .filter((node) => node.selected)
+    .map((node) => node.id)
+    .sort();
   const edges = useEditorStore((state) => state.edges);
   const viewport = useEditorStore((state) => state.viewport);
   const onNodesChange = useEditorStore((state) => state.onNodesChange);
@@ -99,7 +129,9 @@ export const EditorCanvas = ({
           <LogoutButton />
         </div>
 
-        <NodePropertiesPanel />
+        {selectedNodeIds.length > 0 && (
+          <EditorProperties key={JSON.stringify(selectedNodeIds)} />
+        )}
       </Panel>
 
       {saveError ? (

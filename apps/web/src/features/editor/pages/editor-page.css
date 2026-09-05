@@ -143,6 +143,38 @@
   box-shadow: 0 4px 12px rgb(15 23 42 / 12%);
 }
 
+.editor-properties,
+.editor-properties__content {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.editor-properties {
+  gap: 8px;
+}
+
+.editor-properties__toggle {
+  display: none;
+  align-self: flex-end;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  .editor-properties__toggle {
+    display: inline-flex;
+  }
+
+  .editor-properties__content {
+    display: none;
+  }
+
+  .editor-properties__content--open {
+    display: flex;
+  }
+}
+
 .node-properties-panel__title {
   margin: 0 0 16px;
   color: #111827;
@@ -268,6 +300,23 @@
   height: 10px;
   border: 2px solid #ffffff;
   background: #0f766e;
+}
+
+@media (pointer: coarse) {
+  .editor-shape .react-flow__handle {
+    touch-action: none;
+  }
+
+  /* Extend the touch target without moving the edge attachment point. */
+  .editor-shape .react-flow__handle::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    transform: translate(-50%, -50%);
+    content: '';
+  }
 }
 
 .editor-shape--selected .editor-shape__surface {
