@@ -7,6 +7,7 @@ import {
   ConnectionLineType,
   ConnectionMode,
 } from '@xyflow/react';
+import { useNavigate } from 'react-router-dom';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
 import { useEditorStore } from '../store/editor-store';
@@ -34,6 +35,7 @@ export const EditorCanvas = ({
   saveError,
   onSave,
 }: EditorCanvasProps) => {
+  const navigate = useNavigate();
   useEditorKeyboardShortcuts();
   const nodes = useEditorStore((state) => state.nodes);
   const edges = useEditorStore((state) => state.edges);
@@ -80,6 +82,19 @@ export const EditorCanvas = ({
 
       <Panel position="top-right" className="editor-sidebar">
         <div className="editor-sidebar__account-actions">
+          <button
+            type="button"
+            className="editor-toolbar__button"
+            disabled={isDirty || isSaving}
+            onClick={() => navigate('/diagrams')}
+            title={
+              isDirty || isSaving
+                ? 'Save your changes before returning to the dashboard'
+                : 'Back to dashboard'
+            }
+          >
+            Dashboard
+          </button>
           <ProfileLink />
           <LogoutButton />
         </div>
