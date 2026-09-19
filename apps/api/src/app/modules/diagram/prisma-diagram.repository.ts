@@ -16,6 +16,7 @@ import {
   FindDiagramByIdForUserRepositoryInput,
 } from '@diagram-flow/api-ports';
 import {
+  DiagramImageUnavailableError,
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
   DiagramVersionConflictError,
@@ -24,6 +25,7 @@ import {
   DiagramOwnerCannotBeCollaboratorError,
 } from './errors/diagram.error';
 import { Prisma } from '../../../generated/prisma/client';
+import { diagramImageFileNames } from './image/diagram-image-references';
 
 @Injectable()
 export class PrismaDiagramRepository implements DiagramRepositoryPort {
@@ -52,6 +54,14 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
       data: {
         ownerId,
         name,
+        images:
+          snapshot === undefined
+            ? undefined
+            : {
+                create: diagramImageFileNames(snapshot).map((fileName) => ({
+                  fileName,
+                })),
+              },
         folderId: folderId ?? null,
         snapshot:
           snapshot === undefined
@@ -128,6 +138,21 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     snapshot,
     expectedVersion,
   }: SaveDiagramSnapshotRepositoryInput): Promise<SaveDiagramSnapshotRecord> {
+    const fileNames = diagramImageFileNames(snapshot);
+    if (fileNames.length > 0) {
+      const accessibleImages = await this.prisma.diagramImage.count({
+        where: {
+          diagramId,
+          fileName: { in: fileNames },
+          diagram: {
+            OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
+          },
+        },
+      });
+      if (accessibleImages !== fileNames.length) {
+        throw new DiagramImageUnavailableError();
+      }
+    }
     try {
       return await this.prisma.diagram.update({
         where: {

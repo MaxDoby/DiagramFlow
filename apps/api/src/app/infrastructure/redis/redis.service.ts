@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, type RedisClientType } from 'redis';
+import { VERIFY_EMAIL_CODE_SCRIPT } from './verify-email-code.script';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -43,6 +44,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         value: ttlSeconds,
       },
     });
+  }
+
+  async verifyEmailCode(key: string, candidateHash: string): Promise<boolean> {
+    const result = await this.client.eval(VERIFY_EMAIL_CODE_SCRIPT, {
+      keys: [key],
+      arguments: [candidateHash],
+    });
+    return result === 1;
   }
 
   async getValue(key: string): Promise<string | null> {

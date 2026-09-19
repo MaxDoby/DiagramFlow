@@ -18,6 +18,11 @@ import { create } from 'zustand';
 
 export type EditorNode = DiagramSnapshot['nodes'][number];
 export type EditorEdge = DiagramSnapshot['edges'][number];
+export type NodeLayerAction =
+  | 'bring-to-front'
+  | 'bring-forward'
+  | 'send-backward'
+  | 'bring-to-back';
 
 type EditableNodeData = Pick<
   EditorNode['data'],
@@ -41,6 +46,8 @@ type EditorStore = {
   edges: EditorEdge[];
   clipboard: EditorClipboard | null;
   viewport: Viewport;
+  sessionId: string;
+  hasSaveConflict: boolean;
   diagramVersion: number;
   editRevision: number;
   isDirty: boolean;
@@ -54,12 +61,33 @@ type EditorStore = {
   addNode: (shapeType: DiagramShapeType) => void;
   addImageNode: (imageUrl: string) => void;
   updateNodeData: (nodeId: string, change: Partial<EditableNodeData>) => void;
+  updateNodeDimensions: (
+    nodeId: string,
+    dimensions: Pick<EditorNode, 'width' | 'height'>,
+  ) => void;
+  moveNodeLayer: (nodeId: string, action: NodeLayerAction) => void;
   setActiveConnectionType: (connectionType: DiagramConnectionType) => void;
   copySelection: () => void;
   pasteClipboard: () => void;
   markSaved: (version: number, savedRevision: number) => void;
   setSaveError: (message: string | null) => void;
+  setSaveConflict: () => void;
 };
+
+export const MIN_NODE_WIDTH = 60;
+export const MIN_NODE_HEIGHT = 40;
+
+const orderNodesByLayer = (nodes: EditorNode[]): EditorNode[] =>
+  [...nodes].sort(
+    (firstNode, secondNode) =>
+      firstNode.zIndex - secondNode.zIndex ||
+      firstNode.id.localeCompare(secondNode.id),
+  );
+
+const normalizeNodeLayers = (nodes: EditorNode[]): EditorNode[] =>
+  nodes.map((node, zIndex) =>
+    node.zIndex === zIndex ? node : { ...node, zIndex },
+  );
 
 const cleanViewport: Viewport = { x: 0, y: 0, zoom: 1 };
 const PASTE_OFFSET = 32;
@@ -194,7 +222,7 @@ const createEditorEdge = (
 const dirtyState = (state: EditorStore) => ({
   editRevision: state.editRevision + 1,
   isDirty: true,
-  saveError: null,
+  saveError: state.hasSaveConflict ? state.saveError : null,
 });
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -202,6 +230,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
   edges: [],
   clipboard: null,
   viewport: cleanViewport,
+  sessionId: crypto.randomUUID(),
+  hasSaveConflict: false,
   diagramVersion: 0,
   editRevision: 0,
   isDirty: false,
@@ -210,6 +240,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   hydrate: (snapshot, version) =>
     set({
+      sessionId: crypto.randomUUID(),
+      hasSaveConflict: false,
+      clipboard: null,
       nodes: snapshot.nodes,
       edges: snapshot.edges,
       viewport: snapshot.viewport,
@@ -289,6 +322,69 @@ export const useEditorStore = create<EditorStore>((set) => ({
       ),
       ...dirtyState(state),
     })),
+
+  updateNodeDimensions: (nodeId, { width, height }) =>
+    set((state) => {
+      if (
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width < MIN_NODE_WIDTH ||
+        height < MIN_NODE_HEIGHT
+      ) {
+        return state;
+      }
+
+      const targetNode = state.nodes.find((node) => node.id === nodeId);
+
+      if (
+        !targetNode ||
+        (targetNode.width === width && targetNode.height === height)
+      ) {
+        return state;
+      }
+
+      return {
+        nodes: state.nodes.map((node) =>
+          node.id === nodeId ? { ...node, width, height } : node,
+        ),
+        ...dirtyState(state),
+      };
+    }),
+
+  moveNodeLayer: (nodeId, action) =>
+    set((state) => {
+      const orderedNodes = orderNodesByLayer(state.nodes);
+      const currentIndex = orderedNodes.findIndex((node) => node.id === nodeId);
+
+      if (currentIndex === -1) {
+        return state;
+      }
+
+      const lastIndex = orderedNodes.length - 1;
+
+      const targetIndex =
+        action === 'bring-to-front'
+          ? lastIndex
+          : action === 'bring-forward'
+            ? Math.min(currentIndex + 1, lastIndex)
+            : action === 'send-backward'
+              ? Math.max(currentIndex - 1, 0)
+              : 0;
+
+      if (targetIndex === currentIndex) {
+        return state;
+      }
+
+      const reorderedNodes = [...orderedNodes];
+      const [movedNode] = reorderedNodes.splice(currentIndex, 1);
+
+      reorderedNodes.splice(targetIndex, 0, movedNode);
+
+      return {
+        nodes: normalizeNodeLayers(reorderedNodes),
+        ...dirtyState(state),
+      };
+    }),
 
   setActiveConnectionType: (connectionType) =>
     set({
@@ -387,4 +483,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
     })),
 
   setSaveError: (saveError) => set({ saveError }),
+  setSaveConflict: () =>
+    set({
+      hasSaveConflict: true,
+      saveError: 'The diagram changed elsewhere. Reload before saving.',
+    }),
 }));

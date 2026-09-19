@@ -23,6 +23,7 @@ type EditorToolbarProps = {
   diagramId: string;
   isDirty: boolean;
   isSaving: boolean;
+  hasSaveConflict: boolean;
   onAddNode: (shapeType: DiagramShapeType) => void;
   onSave: () => void;
 };
@@ -41,6 +42,7 @@ export const EditorToolbar = ({
   diagramId,
   isDirty,
   isSaving,
+  hasSaveConflict,
   onAddNode,
   onSave,
 }: EditorToolbarProps) => (
@@ -63,7 +65,7 @@ export const EditorToolbar = ({
       type="button"
       className="editor-toolbar__button"
       onClick={onSave}
-      disabled={isSaving}
+      disabled={isSaving || hasSaveConflict}
     >
       <Save size={18} aria-hidden="true" />
       <span>{isSaving ? 'Saving...' : 'Save'}</span>

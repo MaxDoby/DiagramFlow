@@ -218,3 +218,31 @@ Recommended next milestones:
 4. add operation history after the collaboration contract is stable;
 5. add deployment infrastructure and production documentation;
 6. treat inline text editing and other editor shortcuts as post-MVP usability upgrades.
+
+## Upload storage and private diagram images
+
+Uploads accept JPEG, PNG and WebP only (avatars: 2 MB; diagram images: 5 MB).
+The API decodes and re-encodes each image with Sharp, rejects invalid content,
+MIME mismatches, animated files and images above 16 megapixels.
+
+Diagram images are no longer served from the public `/uploads/diagram-images/`
+path. The editor fetches `/api/diagrams/:diagramId/images/:fileName` using its
+access token. Access requires both membership in the diagram and an image
+association with that diagram. The migration backfills associations from saved
+snapshots; duplication preserves those associations. Avatars remain public.
+
+`UPLOADS_ROOT` is the storage directory. Local development uses `uploads`.
+The Render blueprint now configures `/var/data/uploads` on a persistent disk.
+**The API blueprint uses a paid Starter instance because Render does not support
+persistent disks on free web services. This configuration has not been deployed.**
+See https://render.com/docs/disks before activating it.
+
+Before deploying, back up the existing `uploads/avatars` and
+`uploads/diagram-images` directories and copy their contents to the corresponding
+folders on the mounted disk. The SQL migration preserves references, not file
+bytes: it cannot recover files lost by previous ephemeral deploys. Apply migrations
+before starting the updated API (`npx prisma migrate deploy`, already in the
+Render start command). Verify an uploaded image after restarting/redeploying.
+
+The volume approach is intended for this single-instance MVP. Do not enable
+multiple API instances sharing separate local upload directories.

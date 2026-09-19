@@ -5,8 +5,9 @@ import {
   type Node,
   NodeResizer,
 } from '@xyflow/react';
+import { PrivateDiagramImage } from './private-diagram-image';
 import type { CSSProperties } from 'react';
-import type { EditorNode } from '../../store/editor-store';
+import { type EditorNode, MIN_NODE_WIDTH, MIN_NODE_HEIGHT } from '../../store/editor-store';
 
 type ShapeNode = Node<
   Pick<
@@ -55,8 +56,8 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
       <NodeResizer
         color="#0d9488"
         isVisible={selected}
-        minWidth={60}
-        minHeight={40}
+        minWidth={MIN_NODE_WIDTH}
+        minHeight={MIN_NODE_HEIGHT}
       />
       <div
         className={[
@@ -83,12 +84,7 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
 
         <div className="editor-shape__surface" style={surfaceStyle}>
           {shapeType === 'image' && data.imageUrl ? (
-            <img
-              className="editor-shape__image"
-              src={data.imageUrl}
-              alt={data.label}
-              draggable={false}
-            />
+            <PrivateDiagramImage imageUrl={data.imageUrl} label={data.label} />
           ) : (
             <span className="editor-shape__label">{data.label}</span>
           )}

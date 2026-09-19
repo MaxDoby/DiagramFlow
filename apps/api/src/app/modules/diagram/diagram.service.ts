@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Inject,
@@ -26,6 +27,7 @@ import {
   uploadDiagramImageResponseSchema,
 } from '@diagram-flow/contracts';
 import {
+  DiagramImageUnavailableError,
   DiagramFolderNotFoundError,
   DiagramNotFoundError,
   DiagramVersionConflictError,
@@ -137,9 +139,17 @@ export class DiagramService {
       throw new NotFoundException('Diagram not found');
     }
 
-    const imageUrl = await this.diagramImageStorage.save(file);
+    const imageUrl = await this.diagramImageStorage.save(
+      file,
+      diagramId,
+      userId,
+    );
 
     return uploadDiagramImageResponseSchema.parse({ imageUrl });
+  }
+
+  readImage(userId: string, diagramId: string, fileName: string) {
+    return this.diagramImageStorage.read(userId, diagramId, fileName);
   }
 
   async updateDiagram(
@@ -187,6 +197,9 @@ export class DiagramService {
     } catch (error: unknown) {
       if (error instanceof DiagramNotFoundError) {
         throw new NotFoundException('Diagram not found');
+      }
+      if (error instanceof DiagramImageUnavailableError) {
+        throw new BadRequestException(error.message);
       }
       if (error instanceof DiagramVersionConflictError) {
         throw new ConflictException('Diagram was modified by another user');

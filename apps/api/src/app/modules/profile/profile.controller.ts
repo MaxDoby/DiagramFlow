@@ -49,7 +49,7 @@ export class ProfileController {
 
   @Patch('avatar')
   @UseInterceptors(FileInterceptor('avatar'))
-  updateAvatar(
+  async updateAvatar(
     @CurrentUser() user: AccessTokenPayload,
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<ProfileResponse> {
@@ -57,7 +57,7 @@ export class ProfileController {
       throw new BadRequestException('Avatar file is required');
     }
 
-    return this.profileService.updateAvatar(user.sub, file.filename);
+    return this.profileService.uploadAvatar(user.sub, file);
   }
 
   @HttpCode(HttpStatus.NO_CONTENT)

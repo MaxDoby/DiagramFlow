@@ -39,3 +39,10 @@ export class DiagramOwnerCannotBeCollaboratorError extends Error {
     this.name = DiagramOwnerCannotBeCollaboratorError.name;
   }
 }
+
+export class DiagramImageUnavailableError extends Error {
+  constructor() {
+    super('Snapshot contains an image unavailable to this diagram');
+    this.name = DiagramImageUnavailableError.name;
+  }
+}

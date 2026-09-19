@@ -1,5 +1,7 @@
 import {
   Controller,
+  Header,
+  ParseUUIDPipe,
   Post,
   UseGuards,
   Body,
@@ -102,6 +104,17 @@ export class DiagramController {
     }
 
     return this.diagramService.uploadImage(user.sub, params.diagramId, file);
+  }
+
+  @Get(':diagramId/images/:fileName')
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  readImage(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('diagramId', new ParseUUIDPipe()) diagramId: string,
+    @Param('fileName') fileName: string,
+  ) {
+    return this.diagramService.readImage(user.sub, diagramId, fileName);
   }
 
   @Get(':diagramId')

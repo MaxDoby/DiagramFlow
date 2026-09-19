@@ -6,12 +6,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../../infrastructure/redis/redis.service';
-import { randomInt, createHmac, timingSafeEqual } from 'node:crypto';
+import { randomInt, createHmac } from 'node:crypto';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
-import {
-  emailVerificationRecordSchema,
-  type EmailVerificationRecord,
-} from './schemas/email-verification-record.schema';
+import { type EmailVerificationRecord } from './schemas/email-verification-record.schema';
 import { MailService } from '../../infrastructure/mail/mail.service';
 
 @Injectable()
@@ -128,81 +125,14 @@ export class EmailVerificationService {
     await this.createAndSendVerificationCode(normalizedEmail);
   }
 
-  private isOtpCodeValid(
-    email: string,
-    code: string,
-    storedHash: string,
-  ): boolean {
-    const candidateHash = this.hashOtpCode(email, code);
-
-    const candidateBuffer = Buffer.from(candidateHash, 'hex');
-    const storedBuffer = Buffer.from(storedHash, 'hex');
-
-    if (candidateBuffer.length !== storedBuffer.length) {
-      return false;
-    }
-
-    return timingSafeEqual(candidateBuffer, storedBuffer);
-  }
-
-  private parseVerificationRecord(
-    value: string,
-  ): EmailVerificationRecord | null {
-    try {
-      const result = emailVerificationRecordSchema.safeParse(JSON.parse(value));
-
-      return result.success ? result.data : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private async handleFailedAttempt(
-    email: string,
-    record: EmailVerificationRecord,
-  ): Promise<void> {
-    const otpKey = this.buildOtpKey(email);
-    const ttlSeconds = await this.redisService.getTimeToLive(otpKey);
-    const attemptsRemaining = record.attemptsRemaining - 1;
-
-    if (attemptsRemaining <= 0 || ttlSeconds <= 0) {
-      await this.redisService.deleteKey(otpKey);
-      return;
-    }
-
-    const updatedRecord: EmailVerificationRecord = {
-      ...record,
-      attemptsRemaining,
-    };
-
-    await this.redisService.setWithExpiration(
-      otpKey,
-      JSON.stringify(updatedRecord),
-      ttlSeconds,
-    );
-  }
-
   async confirmEmail(email: string, code: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
     const otpKey = this.buildOtpKey(normalizedEmail);
-    const storedValue = await this.redisService.getValue(otpKey);
-
-    if (storedValue === null)
-      throw new BadRequestException('Invalid or expired verification code');
-
-    const record = this.parseVerificationRecord(storedValue);
-
-    if (record === null) {
-      await this.redisService.deleteKey(otpKey);
-
-      throw new BadRequestException('Invalid or expired verification code');
-    }
-
-    const result = this.isOtpCodeValid(normalizedEmail, code, record.codeHash);
-
-    if (result === false) {
-      await this.handleFailedAttempt(normalizedEmail, record);
-
+    const accepted = await this.redisService.verifyEmailCode(
+      otpKey,
+      this.hashOtpCode(normalizedEmail, code),
+    );
+    if (!accepted) {
       throw new BadRequestException('Invalid or expired verification code');
     }
 
@@ -215,8 +145,6 @@ export class EmailVerificationService {
         emailConfirmedAt: new Date(),
       },
     });
-
-    await this.redisService.deleteKey(otpKey);
 
     if (updateResult.count === 0) {
       throw new BadRequestException('Invalid or expired verification code');

@@ -1,66 +1,67 @@
-import { useCallback, useEffect, useState } from 'react';
-
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DiagramApiError, saveDiagramSnapshot } from '../api/editor-api';
 import { useEditorStore } from '../store/editor-store';
 
 const AUTOSAVE_DELAY_MS = 1_000;
-
-type DiagramAutosaveOptions = {
-  isLoading: boolean;
-  loadError: string | null;
-};
+type DiagramAutosaveOptions = { isLoading: boolean; loadError: string | null };
 
 export const useDiagramAutosave = (
   diagramId: string | undefined,
   { isLoading, loadError }: DiagramAutosaveOptions,
 ) => {
-  const nodes = useEditorStore((state) => state.nodes);
-  const edges = useEditorStore((state) => state.edges);
-  const viewport = useEditorStore((state) => state.viewport);
-  const diagramVersion = useEditorStore((state) => state.diagramVersion);
-  const editRevision = useEditorStore((state) => state.editRevision);
-  const isDirty = useEditorStore((state) => state.isDirty);
-  const saveError = useEditorStore((state) => state.saveError);
-  const markSaved = useEditorStore((state) => state.markSaved);
-  const setSaveError = useEditorStore((state) => state.setSaveError);
+  const editRevision = useEditorStore((s) => s.editRevision);
+  const isDirty = useEditorStore((s) => s.isDirty);
+  const saveError = useEditorStore((s) => s.saveError);
+  const hasSaveConflict = useEditorStore((s) => s.hasSaveConflict);
+  const sessionId = useEditorStore((s) => s.sessionId);
   const [isSaving, setIsSaving] = useState(false);
+  const inFlight = useRef(false);
+  const active = useRef(false);
+
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   const save = useCallback(async () => {
-    if (!diagramId || isSaving) {
+    const state = useEditorStore.getState();
+    if (
+      !diagramId ||
+      isLoading ||
+      loadError ||
+      inFlight.current ||
+      state.hasSaveConflict
+    )
       return;
-    }
-
-    const revisionBeingSaved = editRevision;
+    const savedSession = state.sessionId;
+    const isCurrent = () =>
+      active.current && useEditorStore.getState().sessionId === savedSession;
+    inFlight.current = true;
     setIsSaving(true);
-    setSaveError(null);
-
+    state.setSaveError(null);
     try {
       const result = await saveDiagramSnapshot(diagramId, {
-        snapshot: { nodes, edges, viewport },
-        expectedVersion: diagramVersion,
+        snapshot: {
+          nodes: state.nodes,
+          edges: state.edges,
+          viewport: state.viewport,
+        },
+        expectedVersion: state.diagramVersion,
       });
-
-      markSaved(result.version, revisionBeingSaved);
+      if (isCurrent()) state.markSaved(result.version, state.editRevision);
     } catch (error: unknown) {
-      setSaveError(
-        error instanceof DiagramApiError && error.status === 409
-          ? 'The diagram changed elsewhere. Reload before saving.'
-          : 'Unable to save the diagram',
-      );
+      if (isCurrent()) {
+        if (error instanceof DiagramApiError && error.status === 409)
+          state.setSaveConflict();
+        else state.setSaveError('Unable to save the diagram');
+      }
     } finally {
-      setIsSaving(false);
+      inFlight.current = false;
+      if (active.current) setIsSaving(false);
     }
-  }, [
-    diagramId,
-    diagramVersion,
-    edges,
-    editRevision,
-    isSaving,
-    markSaved,
-    nodes,
-    setSaveError,
-    viewport,
-  ]);
+  }, [diagramId, isLoading, loadError]);
 
   useEffect(() => {
     if (
@@ -69,17 +70,26 @@ export const useDiagramAutosave = (
       isLoading ||
       isSaving ||
       loadError ||
-      saveError
-    ) {
+      saveError ||
+      hasSaveConflict
+    )
       return;
-    }
-
     const timeoutId = window.setTimeout(() => {
       void save();
     }, AUTOSAVE_DELAY_MS);
-
     return () => window.clearTimeout(timeoutId);
-  }, [diagramId, isDirty, isLoading, isSaving, loadError, save, saveError]);
+  }, [
+    diagramId,
+    editRevision,
+    sessionId,
+    isDirty,
+    isLoading,
+    isSaving,
+    loadError,
+    saveError,
+    hasSaveConflict,
+    save,
+  ]);
 
-  return { isDirty, isSaving, saveError, save };
+  return { isDirty, isSaving, saveError, hasSaveConflict, save };
 };

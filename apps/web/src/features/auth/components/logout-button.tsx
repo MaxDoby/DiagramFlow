@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { clearAccessToken } from '../../../shared/api/access-token';
 import { logoutUser } from '../api/logout-api';
 
-export const LogoutButton = () => {
+export const LogoutButton = ({ disabled = false }: { disabled?: boolean }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -26,7 +26,7 @@ export const LogoutButton = () => {
         disabled:opacity-60"
       type="button"
       onClick={() => logoutMutation.mutate()}
-      disabled={logoutMutation.isPending}
+      disabled={disabled || logoutMutation.isPending}
       aria-label={logoutMutation.isPending ? 'Signing out' : 'Sign out'}
       title={logoutMutation.isPending ? 'Signing out' : 'Sign out'}
     >

@@ -2,7 +2,12 @@ services:
   - type: web
     name: diagramflow-api-maxdoby
     runtime: node
-    plan: free
+    # Persistent uploads require a paid API instance; review before deploying.
+    plan: starter
+    disk:
+      name: diagramflow-uploads
+      mountPath: /var/data/uploads
+      sizeGB: 1
     region: frankfurt
     branch: feat/editor-foundation
     buildCommand: npm ci --include=dev && npx prisma generate && npx nx build api
@@ -41,7 +46,7 @@ services:
       - key: MAIL_FROM
         sync: false
       - key: UPLOADS_ROOT
-        value: uploads
+        value: /var/data/uploads
 
   - type: keyvalue
     name: diagramflow-redis-maxdoby

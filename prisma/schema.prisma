@@ -71,6 +71,7 @@ model Diagram {
   owner         User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   folder        Folder?               @relation(fields: [folderId], references: [id], onDelete: SetNull)
   collaborators DiagramCollaborator[]
+  images        DiagramImage[]
 
   @@index([ownerId, updatedAt])
   @@index([folderId])
@@ -89,4 +90,13 @@ model DiagramCollaborator {
   @@unique([diagramId, userId])
   @@index([userId, createdAt])
   @@map("diagram_collaborators")
+}
+
+model DiagramImage {
+  diagramId String  @map("diagram_id") @db.Uuid
+  fileName  String  @map("file_name") @db.VarChar(41)
+  diagram   Diagram @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+
+  @@id([diagramId, fileName])
+  @@map("diagram_images")
 }

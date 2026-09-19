@@ -11,6 +11,7 @@ describe(`EmailVerificationService`, () => {
   let redisServiceMock: {
     setIfAbsentWithExpiration: jest.Mock;
     setWithExpiration: jest.Mock;
+    verifyEmailCode: jest.Mock;
     getValue: jest.Mock;
     getTimeToLive: jest.Mock;
     deleteKey: jest.Mock;
@@ -35,6 +36,7 @@ describe(`EmailVerificationService`, () => {
     redisServiceMock = {
       setIfAbsentWithExpiration: jest.fn(),
       setWithExpiration: jest.fn(),
+      verifyEmailCode: jest.fn(),
       getValue: jest.fn(),
       getTimeToLive: jest.fn(),
       deleteKey: jest.fn(),
@@ -159,7 +161,7 @@ describe(`EmailVerificationService`, () => {
     const storedValue = redisServiceMock.setWithExpiration.mock
       .calls[0][1] as string;
 
-    redisServiceMock.getValue.mockResolvedValue(storedValue);
+    redisServiceMock.verifyEmailCode.mockResolvedValue(true);
 
     await expect(
       service.confirmEmail('student@diagramflow.test', code),
@@ -175,47 +177,19 @@ describe(`EmailVerificationService`, () => {
       },
     });
 
-    expect(redisServiceMock.deleteKey).toHaveBeenCalledWith(
+    expect(redisServiceMock.verifyEmailCode).toHaveBeenCalledWith(
       'email-verification:otp:student@diagramflow.test',
+      (JSON.parse(storedValue) as { codeHash: string }).codeHash,
     );
   });
 
-  it('reduces the remaining attempts when the code is invalid', async () => {
-    const code = await service.issueVerificationCode(
-      'student@diagramflow.test',
-    );
-
-    const storedValue = redisServiceMock.setWithExpiration.mock
-      .calls[0][1] as string;
-
-    redisServiceMock.getValue.mockResolvedValue(storedValue);
-
-    const wrongCode = code === '000000' ? '000001' : '000000';
-
-    await expect(
-      service.confirmEmail('student@diagramflow.test', wrongCode),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    const updatedValue = redisServiceMock.setWithExpiration.mock
-      .calls[1][1] as string;
-
-    const updatedRecord = JSON.parse(updatedValue) as {
-      codeHash: string;
-      attemptsRemaining: number;
-    };
-
-    expect(updatedRecord.attemptsRemaining).toBe(4);
-    expect(prismaServiceMock.user.updateMany).not.toHaveBeenCalled();
-  });
-
-  it('rejects an expired verification code', async () => {
-    redisServiceMock.getValue.mockResolvedValue(null);
-
+  it('rejects a code rejected by the atomic Redis verification', async () => {
+    redisServiceMock.verifyEmailCode.mockResolvedValue(false);
     await expect(
       service.confirmEmail('student@diagramflow.test', '123456'),
     ).rejects.toBeInstanceOf(BadRequestException);
-
     expect(prismaServiceMock.user.updateMany).not.toHaveBeenCalled();
+    expect(redisServiceMock.setWithExpiration).not.toHaveBeenCalled();
   });
 
   it('resends a verification code for an unconfirmed user', async () => {

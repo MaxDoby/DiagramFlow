@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EditorPage } from './editor-page';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach } from 'vitest';
 import { getDiagram, saveDiagramSnapshot } from '../api/editor-api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -47,11 +47,15 @@ const renderEditor = () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/diagrams/${diagramId}/editor`]}>
-        <Routes>
-          <Route path="/diagrams/:diagramId/editor" element={<EditorPage />} />
-        </Routes>
-      </MemoryRouter>
+      <RouterProvider
+        router={createMemoryRouter(
+          [
+            { path: '/diagrams/:diagramId/editor', element: <EditorPage /> },
+            { path: '/diagrams', element: <p>Dashboard destination</p> },
+          ],
+          { initialEntries: [`/diagrams/${diagramId}/editor`] },
+        )}
+      />
     </QueryClientProvider>,
   );
 };
@@ -77,6 +81,20 @@ describe('EditorPage', () => {
     fireEvent.click(addRectangleButton);
 
     expect(screen.getByText('Rectangle')).toBeTruthy();
+  });
+
+  it('blocks navigation with unsaved changes and allows explicit discard', async () => {
+    renderEditor();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Add Rectangle' }),
+    );
+    const closing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(closing);
+    expect(closing.defaultPrevented).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
+    expect(await screen.findByRole('alertdialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard and leave' }));
+    expect(await screen.findByText('Dashboard destination')).toBeTruthy();
   });
 
   it('should render nodes from the loaded snapshot', async () => {

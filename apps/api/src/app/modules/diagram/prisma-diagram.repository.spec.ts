@@ -80,8 +80,8 @@ describe('PrismaDiagramRepository', () => {
     });
   });
 
-  it('throws DiagramNotFoundError when the diagram does not exist for the owner', async () => {
-    const ownerId = '11111111-1111-4111-8111-111111111111';
+  it('throws DiagramNotFoundError when the diagram is not accessible to the user', async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
     const diagramId = '22222222-2222-4222-8222-222222222222';
 
     prismaServiceMock.diagram.update.mockRejectedValue(
@@ -95,7 +95,7 @@ describe('PrismaDiagramRepository', () => {
 
     await expect(
       repository.saveSnapshotForUser({
-        userId: ownerId,
+        userId,
         diagramId,
         snapshot: {
           nodes: [],
@@ -113,7 +113,7 @@ describe('PrismaDiagramRepository', () => {
     expect(prismaServiceMock.diagram.findUnique).toHaveBeenCalledWith({
       where: {
         id: diagramId,
-        ownerId,
+        OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
       },
       select: {
         id: true,

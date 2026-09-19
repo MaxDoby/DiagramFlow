@@ -22,6 +22,7 @@ type EditorCanvasProps = {
   isDirty: boolean;
   isSaving: boolean;
   saveError: string | null;
+  hasSaveConflict: boolean;
   onSave: () => void;
 };
 
@@ -59,6 +60,7 @@ export const EditorCanvas = ({
   isDirty,
   isSaving,
   saveError,
+  hasSaveConflict,
   onSave,
 }: EditorCanvasProps) => {
   const navigate = useNavigate();
@@ -105,6 +107,7 @@ export const EditorCanvas = ({
           diagramId={diagramId}
           isDirty={isDirty}
           isSaving={isSaving}
+          hasSaveConflict={hasSaveConflict}
           onAddNode={addNode}
           onSave={onSave}
         />
@@ -115,18 +118,13 @@ export const EditorCanvas = ({
           <button
             type="button"
             className="editor-toolbar__button"
-            disabled={isDirty || isSaving}
             onClick={() => navigate('/diagrams')}
-            title={
-              isDirty || isSaving
-                ? 'Save your changes before returning to the dashboard'
-                : 'Back to dashboard'
-            }
+            title="Back to dashboard"
           >
             Dashboard
           </button>
           <ProfileLink />
-          <LogoutButton />
+          <LogoutButton disabled={isDirty || isSaving} />
         </div>
 
         {selectedNodeIds.length > 0 && (
@@ -137,6 +135,16 @@ export const EditorCanvas = ({
       {saveError ? (
         <Panel position="top-center">
           <p role="alert">{saveError}</p>
+          {hasSaveConflict && (
+            <button
+              onClick={() => {
+                if (window.confirm('Reload and discard your local changes?'))
+                  window.location.reload();
+              }}
+            >
+              Reload latest version
+            </button>
+          )}
         </Panel>
       ) : null}
 

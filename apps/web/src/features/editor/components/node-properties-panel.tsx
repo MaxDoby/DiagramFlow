@@ -1,8 +1,17 @@
-import { type EditorNode, useEditorStore } from '../store/editor-store';
+import {
+  type EditorNode,
+  useEditorStore,
+  MIN_NODE_HEIGHT,
+  MIN_NODE_WIDTH,
+} from '../store/editor-store';
 
 export const NodePropertiesPanel = () => {
   const nodes = useEditorStore((state) => state.nodes);
   const updateNodeData = useEditorStore((state) => state.updateNodeData);
+  const updateNodeDimensions = useEditorStore(
+    (state) => state.updateNodeDimensions,
+  );
+  const moveNodeLayer = useEditorStore((state) => state.moveNodeLayer);
 
   const selectedNodes = nodes.filter((node) => node.selected);
 
@@ -32,6 +41,87 @@ export const NodePropertiesPanel = () => {
       aria-label="Node properties"
     >
       <h2 className="node-properties-panel__title">Properties</h2>
+
+      <div className="node-properties-panel__grid">
+        {(['width', 'height'] as const).map((dimension) => (
+          <label key={dimension} className="node-properties-panel__field">
+            <span>{dimension === 'width' ? 'Width' : 'Height'} (px)</span>
+
+            <input
+              key={`${selectedNode.id}:${selectedNode[dimension]}`}
+              className="node-properties-panel__input nodrag"
+              type="number"
+              required
+              min={dimension === 'width' ? MIN_NODE_WIDTH : MIN_NODE_HEIGHT}
+              step="any"
+              defaultValue={selectedNode[dimension]}
+              onBlur={(event) => {
+                const input = event.currentTarget;
+
+                if (
+                  !input.validity.valid ||
+                  !Number.isFinite(input.valueAsNumber)
+                ) {
+                  input.value = String(selectedNode[dimension]);
+                  return;
+                }
+
+                updateNodeDimensions(selectedNode.id, {
+                  width: selectedNode.width,
+                  height: selectedNode.height,
+                  [dimension]: input.valueAsNumber,
+                });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+          </label>
+        ))}
+      </div>
+
+      <div
+        className="node-properties-panel__field node-properties-panel__field--spaced"
+      >
+        <span>Layer</span>
+
+        <div className="node-properties-panel__grid">
+          <button
+            type="button"
+            className="node-properties-panel__input nodrag"
+            onClick={() => moveNodeLayer(selectedNode.id, 'bring-to-front')}
+          >
+            Bring to Front
+          </button>
+
+          <button
+            type="button"
+            className="node-properties-panel__input nodrag"
+            onClick={() => moveNodeLayer(selectedNode.id, 'bring-forward')}
+          >
+            Bring Forward
+          </button>
+
+          <button
+            type="button"
+            className="node-properties-panel__input nodrag"
+            onClick={() => moveNodeLayer(selectedNode.id, 'send-backward')}
+          >
+            Send Backward
+          </button>
+
+          <button
+            type="button"
+            className="node-properties-panel__input nodrag"
+            onClick={() => moveNodeLayer(selectedNode.id, 'bring-to-back')}
+          >
+            Send to Back
+          </button>
+        </div>
+      </div>
 
       <label className="node-properties-panel__field">
         <span>Label</span>
