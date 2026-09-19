@@ -24,6 +24,31 @@ export type NodeLayerAction =
   | 'send-backward'
   | 'bring-to-back';
 
+type EditorHistorySnapshot = Pick<DiagramSnapshot, 'nodes' | 'edges'>;
+
+const createHistorySnapshot = (
+  nodes: EditorNode[],
+  edges: EditorEdge[],
+): EditorHistorySnapshot =>
+  structuredClone({
+    nodes,
+    edges,
+  });
+
+const appendUndoSnapshot = (
+  undoStack: EditorHistorySnapshot[],
+  snapshot: EditorHistorySnapshot,
+) => [...undoStack, snapshot].slice(-100);
+
+const recordContentChange = (
+  nodes: EditorNode[],
+  edges: EditorEdge[],
+  undoStack: EditorHistorySnapshot[],
+) => ({
+  undoStack: appendUndoSnapshot(undoStack, createHistorySnapshot(nodes, edges)),
+  redoStack: [],
+});
+
 type EditableNodeData = Pick<
   EditorNode['data'],
   | 'label'
@@ -44,6 +69,9 @@ type EditorClipboard = {
 type EditorStore = {
   nodes: EditorNode[];
   edges: EditorEdge[];
+  undoStack: EditorHistorySnapshot[];
+  redoStack: EditorHistorySnapshot[];
+  pendingContentSnapshot: EditorHistorySnapshot | null;
   clipboard: EditorClipboard | null;
   viewport: Viewport;
   sessionId: string;
@@ -54,6 +82,10 @@ type EditorStore = {
   saveError: string | null;
   activeConnectionType: DiagramConnectionType;
   hydrate: (snapshot: DiagramSnapshot, version: number) => void;
+  undo: () => void;
+  redo: () => void;
+  beginContentInteraction: () => void;
+  commitContentInteraction: () => void;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<EditorEdge>[]) => void;
   onConnect: (connection: Connection) => void;
@@ -228,6 +260,9 @@ const dirtyState = (state: EditorStore) => ({
 export const useEditorStore = create<EditorStore>((set) => ({
   nodes: [],
   edges: [],
+  undoStack: [],
+  redoStack: [],
+  pendingContentSnapshot: null,
   clipboard: null,
   viewport: cleanViewport,
   sessionId: crypto.randomUUID(),
@@ -245,11 +280,95 @@ export const useEditorStore = create<EditorStore>((set) => ({
       clipboard: null,
       nodes: snapshot.nodes,
       edges: snapshot.edges,
+      undoStack: [],
+      redoStack: [],
+      pendingContentSnapshot: null,
       viewport: snapshot.viewport,
       diagramVersion: version,
       editRevision: 0,
       isDirty: false,
       saveError: null,
+    }),
+
+  undo: () =>
+    set((state) => {
+      const previousSnapshot = state.undoStack[state.undoStack.length - 1];
+
+      if (!previousSnapshot) {
+        return state;
+      }
+
+      const currentSnapshot = createHistorySnapshot(state.nodes, state.edges);
+      const restoredSnapshot = createHistorySnapshot(
+        previousSnapshot.nodes,
+        previousSnapshot.edges,
+      );
+      return {
+        ...dirtyState(state),
+        nodes: restoredSnapshot.nodes,
+        edges: restoredSnapshot.edges,
+        undoStack: state.undoStack.slice(0, -1),
+        redoStack: [...state.redoStack, currentSnapshot],
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      const nextSnapshot = state.redoStack[state.redoStack.length - 1];
+
+      if (!nextSnapshot) {
+        return state;
+      }
+
+      const currentSnapshot = createHistorySnapshot(state.nodes, state.edges);
+      const restoredSnapshot = createHistorySnapshot(
+        nextSnapshot.nodes,
+        nextSnapshot.edges,
+      );
+
+      return {
+        ...dirtyState(state),
+        nodes: restoredSnapshot.nodes,
+        edges: restoredSnapshot.edges,
+        undoStack: [...state.undoStack, currentSnapshot],
+        redoStack: state.redoStack.slice(0, -1),
+      };
+    }),
+
+  beginContentInteraction: () =>
+    set((state) => {
+      if (state.pendingContentSnapshot) {
+        return state;
+      }
+
+      return {
+        pendingContentSnapshot: createHistorySnapshot(state.nodes, state.edges),
+      };
+    }),
+
+  commitContentInteraction: () =>
+    set((state) => {
+      const pendingSnapshot = state.pendingContentSnapshot;
+
+      if (!pendingSnapshot) {
+        return state;
+      }
+
+      const currentSnapshot = createHistorySnapshot(state.nodes, state.edges);
+      const didContentChange =
+        JSON.stringify(pendingSnapshot) !== JSON.stringify(currentSnapshot);
+
+      if (!didContentChange) {
+        return {
+          pendingContentSnapshot: null,
+        };
+      }
+
+      return {
+        undoStack: appendUndoSnapshot(state.undoStack, pendingSnapshot),
+        redoStack: [],
+        pendingContentSnapshot: null,
+      };
     }),
 
   onNodesChange: (changes) =>
@@ -279,6 +398,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   onConnect: (connection) =>
     set((state) => ({
+      ...recordContentChange(state.nodes, state.edges, state.undoStack),
       edges: addEdge(
         createEditorEdge(connection, state.activeConnectionType),
         state.edges,
@@ -294,12 +414,14 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   addNode: (shapeType) =>
     set((state) => ({
+      ...recordContentChange(state.nodes, state.edges, state.undoStack),
       nodes: [...state.nodes, createEditorNode(shapeType, state.nodes.length)],
       ...dirtyState(state),
     })),
 
   addImageNode: (imageUrl) =>
     set((state) => ({
+      ...recordContentChange(state.nodes, state.edges, state.undoStack),
       nodes: [
         ...state.nodes,
         createEditorNode('image', state.nodes.length, imageUrl),
@@ -308,20 +430,29 @@ export const useEditorStore = create<EditorStore>((set) => ({
     })),
 
   updateNodeData: (nodeId, changes) =>
-    set((state) => ({
-      nodes: state.nodes.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                ...changes,
-              },
-            }
-          : node,
-      ),
-      ...dirtyState(state),
-    })),
+    set((state) => {
+      const targetNode = state.nodes.find((node) => node.id === nodeId);
+
+      if (!targetNode) {
+        return state;
+      }
+
+      return {
+        ...recordContentChange(state.nodes, state.edges, state.undoStack),
+        nodes: state.nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  ...changes,
+                },
+              }
+            : node,
+        ),
+        ...dirtyState(state),
+      };
+    }),
 
   updateNodeDimensions: (nodeId, { width, height }) =>
     set((state) => {
@@ -344,6 +475,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       }
 
       return {
+        ...recordContentChange(state.nodes, state.edges, state.undoStack),
         nodes: state.nodes.map((node) =>
           node.id === nodeId ? { ...node, width, height } : node,
         ),
@@ -381,6 +513,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       reorderedNodes.splice(targetIndex, 0, movedNode);
 
       return {
+        ...recordContentChange(state.nodes, state.edges, state.undoStack),
         nodes: normalizeNodeLayers(reorderedNodes),
         ...dirtyState(state),
       };
@@ -460,6 +593,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       );
 
       return {
+        ...recordContentChange(state.nodes, state.edges, state.undoStack),
         nodes: [
           ...state.nodes.map((node) => ({ ...node, selected: false })),
           ...pastedNodes,

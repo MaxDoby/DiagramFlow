@@ -8,6 +8,8 @@ import {
   Type,
   PanelsTopLeft,
   type LucideIcon,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { type DiagramShapeType } from '@diagram-flow/contracts';
 import { DiagramImageUploadButton } from './diagram-image-upload-button';
@@ -24,6 +26,10 @@ type EditorToolbarProps = {
   isDirty: boolean;
   isSaving: boolean;
   hasSaveConflict: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onAddNode: (shapeType: DiagramShapeType) => void;
   onSave: () => void;
 };
@@ -43,10 +49,35 @@ export const EditorToolbar = ({
   isDirty,
   isSaving,
   hasSaveConflict,
+  canUndo,
+  canRedo,
+  onRedo,
+  onUndo,
   onAddNode,
   onSave,
 }: EditorToolbarProps) => (
   <>
+    <button
+      type="button"
+      className="editor-toolbar__button"
+      onClick={onUndo}
+      disabled={!canUndo}
+      aria-label="Undo"
+      title="Undo (Ctrl/Cmd + Z)"
+    >
+      <Undo2 size={18} aria-hidden="true" />
+    </button>
+
+    <button
+      type="button"
+      className="editor-toolbar__button"
+      onClick={onRedo}
+      disabled={!canRedo}
+      aria-label="Redo"
+      title="Redo (Ctrl/Cmd + Shift + Z)"
+    >
+      <Redo2 size={18} aria-hidden="true" />
+    </button>
     {shapeTools.map(({ shapeType, label, icon: Icon }) => (
       <button
         key={shapeType}

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreateFolderForm } from '../components/create-folder-form';
 import { DashboardHeader } from '../components/dashboard-header';
 import { DiagramList } from '../components/diagram-list';
+import { RecentDiagramList } from '../components/recent-diagram-list';
 import {
   DiagramsErrorState,
   DiagramsLoadingState,
@@ -31,6 +32,9 @@ export const DiagramsPage = () => {
   const sharedDiagramsQuery = useSharedDiagramsQuery();
   const foldersQuery = useFoldersQuery();
   const createDiagramMutation = useCreateDiagramMutation();
+  const recentDiagrams = selectedFolderId
+    ? []
+    : (diagramsQuery.data?.slice(0, 5) ?? []);
 
   if (
     diagramsQuery.isPending ||
@@ -88,6 +92,12 @@ export const DiagramsPage = () => {
         isCreating={createDiagramMutation.isPending}
         onCreateDiagram={handleCreateDiagram}
       />
+
+      {recentDiagrams.length > 0 && (
+        <section className='mx-auto max-w-6xl px-5 pt-8'>
+          <RecentDiagramList diagrams={recentDiagrams} />
+        </section>
+      )}
 
       <section className="mx-auto max-w-6xl px-5 py-8">
         <h1 className="text-2xl font-semibold">My Diagrams</h1>

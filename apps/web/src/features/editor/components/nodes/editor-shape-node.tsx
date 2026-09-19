@@ -7,7 +7,12 @@ import {
 } from '@xyflow/react';
 import { PrivateDiagramImage } from './private-diagram-image';
 import type { CSSProperties } from 'react';
-import { type EditorNode, MIN_NODE_WIDTH, MIN_NODE_HEIGHT } from '../../store/editor-store';
+import {
+  type EditorNode,
+  MIN_NODE_WIDTH,
+  MIN_NODE_HEIGHT,
+  useEditorStore,
+} from '../../store/editor-store';
 
 type ShapeNode = Node<
   Pick<
@@ -39,6 +44,13 @@ const fontFamilyByToken: Record<EditorNode['data']['fontFamily'], string> = {
 };
 
 export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
+  const beginContentInteraction = useEditorStore(
+    (state) => state.beginContentInteraction,
+  );
+  const commitContentInteraction = useEditorStore(
+    (state) => state.commitContentInteraction,
+  );
+
   const shapeType = data.shapeType;
 
   const surfaceStyle: ShapeSurfaceStyle = {
@@ -58,6 +70,8 @@ export const EditorShapeNode = ({ data, selected }: NodeProps<ShapeNode>) => {
         isVisible={selected}
         minWidth={MIN_NODE_WIDTH}
         minHeight={MIN_NODE_HEIGHT}
+        onResizeStart={beginContentInteraction}
+        onResizeEnd={commitContentInteraction}
       />
       <div
         className={[

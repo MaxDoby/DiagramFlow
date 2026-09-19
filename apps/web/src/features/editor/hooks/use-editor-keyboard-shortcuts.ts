@@ -4,6 +4,8 @@ import { useEditorStore } from '../store/editor-store';
 export const useEditorKeyboardShortcuts = () => {
   const copySelection = useEditorStore((state) => state.copySelection);
   const pasteClipboard = useEditorStore((state) => state.pasteClipboard);
+  const undo = useEditorStore((state) => state.undo);
+  const redo = useEditorStore((state) => state.redo);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -27,6 +29,25 @@ export const useEditorKeyboardShortcuts = () => {
 
       const key = event.key.toLowerCase();
 
+      if (key === 'z') {
+        event.preventDefault();
+
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+
+        return;
+      }
+
+      if (key === 'y' && event.ctrlKey) {
+        event.preventDefault();
+        redo();
+
+        return;
+      }
+
       if (key === 'c') {
         event.preventDefault();
         copySelection();
@@ -43,5 +64,5 @@ export const useEditorKeyboardShortcuts = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [copySelection, pasteClipboard]);
+  }, [copySelection, pasteClipboard, redo, undo]);
 };

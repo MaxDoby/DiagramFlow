@@ -7,7 +7,7 @@ import {
   ConnectionLineType,
   ConnectionMode,
 } from '@xyflow/react';
-import { useId, useState } from 'react';
+import { useId, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
@@ -76,7 +76,22 @@ export const EditorCanvas = ({
   const onEdgesChange = useEditorStore((state) => state.onEdgesChange);
   const onConnect = useEditorStore((state) => state.onConnect);
   const onMoveEnd = useEditorStore((state) => state.onMoveEnd);
+  const beginContentInteraction = useEditorStore(
+    (state) => state.beginContentInteraction,
+  );
+  const commitContentInteraction = useEditorStore(
+    (state) => state.commitContentInteraction,
+  );
+  const onBeforeDelete = useCallback(async () => {
+    beginContentInteraction();
+
+    return true;
+  }, [beginContentInteraction]);
   const addNode = useEditorStore((state) => state.addNode);
+  const undo = useEditorStore((state) => state.undo);
+  const redo = useEditorStore((state) => state.redo);
+  const canUndo = useEditorStore((state) => state.undoStack.length > 0);
+  const canRedo = useEditorStore((state) => state.redoStack.length > 0);
   const activeConnectionType = useEditorStore(
     (state) => state.activeConnectionType,
   );
@@ -91,6 +106,10 @@ export const EditorCanvas = ({
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onNodeDragStart={beginContentInteraction}
+      onNodeDragStop={commitContentInteraction}
+      onBeforeDelete={onBeforeDelete}
+      onDelete={commitContentInteraction}
       connectionMode={ConnectionMode.Loose}
       connectionLineType={
         activeConnectionType === 'arrow'
@@ -109,6 +128,10 @@ export const EditorCanvas = ({
           isSaving={isSaving}
           hasSaveConflict={hasSaveConflict}
           onAddNode={addNode}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
           onSave={onSave}
         />
       </Panel>
