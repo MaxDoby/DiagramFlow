@@ -147,6 +147,13 @@ export const diagramParamsSchema = z.object({
   diagramId: z.uuid(),
 });
 
+export const diagramUpdatedEventSchema = z.object({
+  diagramId: z.uuid(),
+  version: z.number().int().nonnegative(),
+});
+
+export type DiagramUpdatedEvent = z.infer<typeof diagramUpdatedEventSchema>;
+
 export const diagramListQuerySchema = z.object({
   folderId: z.uuid().optional(),
 });

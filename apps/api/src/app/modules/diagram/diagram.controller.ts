@@ -20,6 +20,7 @@ import {
 import { AccessTokenGuard } from '../auth/guards/access-token.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DiagramService } from './diagram.service';
+import { DiagramRealtimeGateway } from './diagram-realtime.gateway';
 import { AccessTokenPayload } from '../auth/schemas/access-token-payload.schema';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
@@ -46,7 +47,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 @Controller('diagrams')
 @UseGuards(AccessTokenGuard)
 export class DiagramController {
-  constructor(private readonly diagramService: DiagramService) {}
+  constructor(
+    private readonly diagramService: DiagramService,
+    private readonly diagramRealTimeGateway: DiagramRealtimeGateway,
+  ) {}
 
   @Get()
   listDiagrams(
@@ -138,14 +142,24 @@ export class DiagramController {
   }
 
   @Put(':diagramId/snapshot')
-  saveSnapshot(
+  async saveSnapshot(
     @CurrentUser() user: AccessTokenPayload,
     @Param(new ZodValidationPipe(diagramParamsSchema))
     params: DiagramParams,
     @Body(new ZodValidationPipe(saveDiagramSnapshotSchema))
     input: SaveDiagramSnapshotInput,
   ): Promise<SaveDiagramSnapshotResponse> {
-    return this.diagramService.saveSnapshot(user.sub, params.diagramId, input);
+    const result = await this.diagramService.saveSnapshot(
+      user.sub,
+      params.diagramId,
+      input,
+    );
+    this.diagramRealTimeGateway.publishDiagramUpdated(
+      params.diagramId,
+      user.sub,
+      result.version,
+    );
+    return result;
   }
 
   @Delete(':diagramId')

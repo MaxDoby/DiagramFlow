@@ -69,6 +69,8 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "11.0.2",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.2.6",
+    "@nestjs/websockets": "^11.2.6",
     "@prisma/adapter-pg": "7.9.0",
     "@prisma/client": "7.9.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -88,6 +90,8 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
     "sharp": "^0.35.4",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4",
     "tailwindcss": "^4.3.3",
     "zod": "4.4.3",
     "zustand": "^5.0.15"

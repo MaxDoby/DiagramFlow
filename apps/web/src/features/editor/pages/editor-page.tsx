@@ -3,6 +3,7 @@ import { useBlocker, useParams } from 'react-router-dom';
 import { EditorCanvas } from '../components/editor-canvas';
 import { useDiagramAutosave } from '../hooks/use-diagram-autosave';
 import { useDiagramLoader } from '../hooks/use-diagram-loader';
+import { useDiagramRealtime } from '../hooks/use-diagram-realtime';
 import './editor-page.css';
 import { useEffect } from 'react';
 
@@ -18,6 +19,10 @@ const EditorSession = ({ diagramId }: { diagramId?: string }) => {
       isLoading,
       loadError,
     });
+  useDiagramRealtime(diagramId, {
+    isLoading,
+    loadError,
+  });
 
   const blocker = useBlocker(isDirty || isSaving);
   useEffect(() => {

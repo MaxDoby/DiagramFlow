@@ -8,6 +8,7 @@ import { DiagramController } from './diagram.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { DiagramImageStorageService } from './image/diagram-image-storage.service';
 import { createDiagramImageUploadOptions } from './image/diagram-image-upload.options';
+import { DiagramRealtimeGateway } from './diagram-realtime.gateway';
 
 @Module({
   controllers: [DiagramController],
@@ -19,6 +20,7 @@ import { createDiagramImageUploadOptions } from './image/diagram-image-upload.op
   providers: [
     DiagramService,
     DiagramImageStorageService,
+    DiagramRealtimeGateway,
     {
       provide: DIAGRAM_REPOSITORY_PORT,
       useClass: PrismaDiagramRepository,
