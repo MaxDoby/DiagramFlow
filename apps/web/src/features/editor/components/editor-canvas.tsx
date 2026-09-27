@@ -7,7 +7,7 @@ import {
   ConnectionLineType,
   ConnectionMode,
 } from '@xyflow/react';
-import { useId, useState, useCallback } from 'react';
+import { useId, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoutButton } from '../../auth/components/logout-button';
 import { ProfileLink } from '../../profile/components/profile-link';
@@ -16,6 +16,7 @@ import { EditorToolbar } from './editor-toolbar';
 import { EditorShapeNode } from './nodes/editor-shape-node';
 import { useEditorKeyboardShortcuts } from '../hooks/use-editor-keyboard-shortcuts';
 import { NodePropertiesPanel } from './node-properties-panel';
+import { exportDiagramAsPng } from '../utils/export-diagram-as-png';
 
 type EditorCanvasProps = {
   diagramId: string;
@@ -95,6 +96,28 @@ export const EditorCanvas = ({
   const activeConnectionType = useEditorStore(
     (state) => state.activeConnectionType,
   );
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = useCallback(async () => {
+    if (!canvasRef.current) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      await exportDiagramAsPng(canvasRef.current, nodes);
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : 'Unable to export diagram.',
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [nodes]);
 
   return (
     <ReactFlow
@@ -120,6 +143,7 @@ export const EditorCanvas = ({
       onMoveEnd={onMoveEnd}
       nodeTypes={nodeTypes}
       deleteKeyCode={['Backspace', 'Delete']}
+      ref={canvasRef}
     >
       <Panel position="top-left" className="editor-toolbar">
         <EditorToolbar
@@ -132,6 +156,9 @@ export const EditorCanvas = ({
           canRedo={canRedo}
           onUndo={undo}
           onRedo={redo}
+          canExport={nodes.length > 0}
+          isExporting={isExporting}
+          onExport={() => void handleExport()}
           onSave={onSave}
         />
       </Panel>
@@ -168,6 +195,12 @@ export const EditorCanvas = ({
               Reload latest version
             </button>
           )}
+        </Panel>
+      ) : null}
+
+      {exportError ? (
+        <Panel position="bottom-center">
+          <p role="alert">{exportError}</p>
         </Panel>
       ) : null}
 

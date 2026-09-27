@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   Undo2,
   Redo2,
+  Download,
 } from 'lucide-react';
 import { type DiagramShapeType } from '@diagram-flow/contracts';
 import { DiagramImageUploadButton } from './diagram-image-upload-button';
@@ -30,6 +31,9 @@ type EditorToolbarProps = {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  canExport: boolean;
+  isExporting: boolean;
+  onExport: () => void;
   onAddNode: (shapeType: DiagramShapeType) => void;
   onSave: () => void;
 };
@@ -52,6 +56,9 @@ export const EditorToolbar = ({
   canUndo,
   canRedo,
   onRedo,
+  canExport,
+  isExporting,
+  onExport,
   onUndo,
   onAddNode,
   onSave,
@@ -92,6 +99,15 @@ export const EditorToolbar = ({
     ))}
     <DiagramImageUploadButton diagramId={diagramId} />
     <ConnectionTypeSelector />
+    <button
+      type="button"
+      className="editor-toolbar__button"
+      onClick={onExport}
+      disabled={!canExport || isExporting}
+    >
+      <Download size={18} aria-hidden="true" />
+      <span>{isExporting ? 'Exporting...' : 'Export PNG'}</span>
+    </button>
     <button
       type="button"
       className="editor-toolbar__button"

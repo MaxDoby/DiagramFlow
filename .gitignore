@@ -55,3 +55,7 @@ vitest.config.*.timestamp*
 # User uploads
 /uploads/
 .playwright-mcp/
+
+# Local implementation plan
+/PLAN_IMPLEMENTARE.local.md
+/Mentors_injection
