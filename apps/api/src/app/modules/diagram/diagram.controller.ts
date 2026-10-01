@@ -1,0 +1,210 @@
+import {
+  Controller,
+  Header,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+  Body,
+  Get,
+  Query,
+  Param,
+  Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Put,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { AccessTokenGuard } from '../auth/guards/access-token.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { DiagramService } from './diagram.service';
+import { DiagramRealtimeGateway } from './diagram-realtime.gateway';
+import { AccessTokenPayload } from '../auth/schemas/access-token-payload.schema';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import {
+  CreateDiagramInput,
+  createDiagramSchema,
+  DiagramDetailsResponse,
+  DiagramListQuery,
+  diagramListQuerySchema,
+  DiagramListResponse,
+  DiagramParams,
+  diagramParamsSchema,
+  DiagramSummaryResponse,
+  UpdateDiagramInput,
+  updateDiagramSchema,
+  SaveDiagramSnapshotInput,
+  SaveDiagramSnapshotResponse,
+  saveDiagramSnapshotSchema,
+  ShareDiagramInput,
+  shareDiagramSchema,
+  type UploadDiagramImageResponse,
+} from '@diagram-flow/contracts';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  diagramOperationSchema,
+  diagramSyncInputSchema,
+  type DiagramOperation,
+  type DiagramSyncInput,
+} from '@diagram-flow/contracts';
+
+@Controller('diagrams')
+@UseGuards(AccessTokenGuard)
+export class DiagramController {
+  constructor(
+    private readonly diagramService: DiagramService,
+    private readonly diagramRealTimeGateway: DiagramRealtimeGateway,
+  ) {}
+
+  @Post(':diagramId/operations')
+  async applyOperation(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(diagramOperationSchema))
+    input: DiagramOperation,
+  ) {
+    const event = await this.diagramService.applyOperation(
+      user.sub,
+      params.diagramId,
+      input,
+    );
+    this.diagramRealTimeGateway.publishOperation(event);
+    return event;
+  }
+
+  @Post(':diagramId/sync')
+  syncOperations(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(diagramSyncInputSchema))
+    input: DiagramSyncInput,
+  ) {
+    return this.diagramService.syncOperations(
+      user.sub,
+      params.diagramId,
+      input.pendingIds,
+    );
+  }
+
+  @Get()
+  listDiagrams(
+    @CurrentUser() user: AccessTokenPayload,
+    @Query(new ZodValidationPipe(diagramListQuerySchema))
+    query: DiagramListQuery,
+  ): Promise<DiagramListResponse> {
+    return this.diagramService.listDiagrams(user.sub, query.folderId);
+  }
+
+  @Get('shared')
+  listSharedDiagrams(
+    @CurrentUser() user: AccessTokenPayload,
+  ): Promise<DiagramListResponse> {
+    return this.diagramService.listSharedDiagrams(user.sub);
+  }
+
+  @Post()
+  createDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Body(new ZodValidationPipe(createDiagramSchema)) input: CreateDiagramInput,
+  ): Promise<DiagramSummaryResponse> {
+    return this.diagramService.createDiagram(user.sub, input);
+  }
+
+  @Post(':diagramId/duplicate')
+  duplicateDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<DiagramSummaryResponse> {
+    return this.diagramService.duplicateDiagram(user.sub, params.diagramId);
+  }
+
+  @Post(':diagramId/collaborators')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  shareDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(shareDiagramSchema)) input: ShareDiagramInput,
+  ): Promise<void> {
+    return this.diagramService.shareDiagram(user.sub, params.diagramId, input);
+  }
+
+  @Post(':diagramId/images')
+  @UseInterceptors(FileInterceptor('image'))
+  uploadImage(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<UploadDiagramImageResponse> {
+    if (!file) {
+      throw new BadRequestException('Diagram image file is required');
+    }
+
+    return this.diagramService.uploadImage(user.sub, params.diagramId, file);
+  }
+
+  @Get(':diagramId/images/:fileName')
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  readImage(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param('diagramId', new ParseUUIDPipe()) diagramId: string,
+    @Param('fileName') fileName: string,
+  ) {
+    return this.diagramService.readImage(user.sub, diagramId, fileName);
+  }
+
+  @Get(':diagramId')
+  getDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<DiagramDetailsResponse> {
+    return this.diagramService.getDiagram(user.sub, params.diagramId);
+  }
+
+  @Patch(':diagramId')
+  updateDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @Body(new ZodValidationPipe(updateDiagramSchema))
+    input: UpdateDiagramInput,
+  ): Promise<DiagramSummaryResponse> {
+    return this.diagramService.updateDiagram(user.sub, params.diagramId, input);
+  }
+
+  @Put(':diagramId/snapshot')
+  async saveSnapshot(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+    @Body(new ZodValidationPipe(saveDiagramSnapshotSchema))
+    input: SaveDiagramSnapshotInput,
+  ): Promise<SaveDiagramSnapshotResponse> {
+    const result = await this.diagramService.saveSnapshot(
+      user.sub,
+      params.diagramId,
+      input,
+    );
+    this.diagramRealTimeGateway.publishDiagramUpdated(
+      params.diagramId,
+      user.sub,
+      result.version,
+    );
+    return result;
+  }
+
+  @Delete(':diagramId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteDiagram(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema))
+    params: DiagramParams,
+  ): Promise<void> {
+    return this.diagramService.deleteDiagram(user.sub, params.diagramId);
+  }
+}

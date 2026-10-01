@@ -109,6 +109,14 @@ export class ProfileService {
     }
   }
 
+  async uploadAvatar(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<ProfileResponse> {
+    const fileName = await this.avatarStorage.save(file);
+    return this.updateAvatar(userId, fileName);
+  }
+
   async updateAvatar(
     userId: string,
     fileName: string,

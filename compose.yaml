@@ -46,6 +46,84 @@ services:
       - '${SMTP_PORT}:1025'
       - '${MAILPIT_UI_PORT}:8025'
 
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+
+    environment:
+      DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public'
+
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+
+    env_file:
+      - .env
+
+    environment:
+      DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public'
+      REDIS_URL: 'redis://redis:6379'
+      MAIL_PROVIDER: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: '1025'
+      PORT: '3000'
+      UPLOADS_ROOT: /app/uploads
+      REALTIME_ALLOWED_ORIGINS: 'http://localhost:8080'
+
+    volumes:
+      - uploads_data:/app/uploads
+
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runtime
+
+    ports:
+      - '8080:80'
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:

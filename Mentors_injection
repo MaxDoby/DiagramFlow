@@ -1,0 +1,136 @@
+Salutare! Pentru urmatorul task propun ceva mai interesant de facut. As vrea sa realizezi un proiect care va fi bazat pe vectori. Sursa de inspiratie poate sa fie platforma https://lucid.app.
+
+Proiectul ca concept si idee e simplu dar dupa parerea mea acolo o sa fie anumite challenges.
+
+Project: DiagramFlow
+O aplicatie web pentru crearea si colaborarea in timp real asupra diagramelor.
+
+Obiective
+Utilizatorii pot:
+
+• crea diagrame
+• edita diagrame prin drag & drop
+• colabora in timp real
+• salva modificarile automat
+• exporta diagrame
+• partaja proiecte cu alti utilizatori
+
+
+Tech Stack:
+Frontend
+• React
+• TypeScript
+• React Flow sau editor custom
+• TailwindCSS
+• Zustand
+• React Query
+
+Backend:
+• NestJS
+• PostgreSQL
+• Redis
+• Socket.IO
+
+Infrastructure:
+• Docker
+• Docker Compose
+• GitHub Actions
+• Nginx
+
+
+MVP Requirements
+
+Authentication
+User Registration
+- Email
+- Password
+- Confirm Email
+Login
+- JWT Access Token
+- Refresh Token
+Profile
+- Update Name
+- Avatar
+- Password
+Dashboard
+
+Post-Login User View:
+- My Diagrams
+- Create Diagram
+- Folders
+- Recent
+- Shared with Me
+
+Diagram CRUD Operations
+The user can:
+- Create
+- Read
+- Update
+- Delete
+- Duplicate
+- Rename
+- Move to Folder
+
+Diagram Editor
+Features:
+- Infinite Canvas
+
+User Capabilities:
+- Zoom
+- Pan
+- Select
+- Multi-select
+- Drag
+- Resize
+- Copy
+- Paste
+- Delete
+
+Shapes
+Implementation Requirements:
+- Rectangle
+- Circle
+- Diamond
+- Triangle
+- Text
+- Image
+- Sticky Note
+- Arrow
+- Connector
+- Container
+
+Properties Panel
+Upon selecting an element, the following properties are available:
+- Width
+- Height
+- Background Color
+- Border Color
+- Border Size
+- Opacity
+- Rotation
+- Text
+- Font
+- Alignment
+- Layer
+
+Layers
+- Bring to Front
+- Send Backward
+- Bring Forward
+- Send to Back
+
+Connections
+Functionality for connecting objects.
+Example Flow:
+Rectangle → Diamond → Circle
+
+Connectors must automatically track the movement of connected objects.
+
+History:
+• Undo
+• Redo
+• History stack
+• Autosave
+
+După fiecare modificare:
+User moves rectangle → Frontend creates operation → Backend stores operation → Auto-save

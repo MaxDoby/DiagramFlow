@@ -11,5 +11,8 @@ export type AvatarMimeType = keyof typeof AVATAR_EXTENSION_BY_MIME_TYPE;
 export const isAllowedAvatarMimeType = (
   mimeType: string,
 ): mimeType is AvatarMimeType => {
-  return mimeType in AVATAR_EXTENSION_BY_MIME_TYPE;
+  return Object.prototype.hasOwnProperty.call(
+    AVATAR_EXTENSION_BY_MIME_TYPE,
+    mimeType,
+  );
 };

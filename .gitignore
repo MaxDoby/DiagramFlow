@@ -54,3 +54,8 @@ vitest.config.*.timestamp*
 /apps/api/src/generated/prisma/
 # User uploads
 /uploads/
+.playwright-mcp/
+
+# Local implementation plan
+/PLAN_IMPLEMENTARE.local.md
+/Mentors_injection

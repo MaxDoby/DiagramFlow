@@ -1,179 +1,250 @@
 # DiagramFlow
 
-DiagramFlow is a web application for creating, editing, sharing, and collaborating on diagrams in real time.
+DiagramFlow is an Nx monorepo for creating, editing, organizing, and sharing diagrams.
 
-The project is developed as an MVP using the technical stack and requirements provided by the mentor.
+The current MVP includes authentication, profile management, folders, diagram sharing,
+an interactive React Flow editor, image uploads, persisted content operations,
+autosave, and real-time collaboration. Presence cursors and a visual history browser
+are not implemented.
 
 ## Architecture
 
-DiagramFlow uses a modular monolith architecture.
+DiagramFlow uses a modular monolith architecture:
 
-The backend is deployed as a single NestJS application, while the business logic is separated into modules with explicit responsibilities.
+- `apps/web` contains the React client;
+- `apps/api` contains the NestJS backend;
+- `libs/contracts` contains shared Zod request and response contracts;
+- `libs/api-ports` contains backend repository ports;
+- PostgreSQL stores application data, diagram snapshots, and the ordered operation log;
+- Redis supports short-lived infrastructure concerns such as email verification;
+- Mailpit receives development emails locally.
 
-Planned backend modules:
+The backend is deployed as one application, while its business logic is separated into
+feature modules with explicit responsibilities:
 
-- Auth
-- Users
-- Diagrams
-- Editor
-- Collaboration
-- Files
+- Auth;
+- Profile;
+- Folders;
+- Diagrams;
+- shared infrastructure for Prisma, Redis, and email.
 
 ### Why a modular monolith?
 
-The MVP features are strongly connected:
-
-- collaboration modifies diagrams;
-- sharing controls editing permissions;
-- history stores editor operations;
-- autosave updates the current diagram state.
-
-Keeping these operations inside one backend allows us to use local service calls and PostgreSQL transactions without introducing distributed transactions or network communication between backend services.
-
-Compared with microservices, the modular monolith provides:
-
-- simpler deployment;
-- simpler debugging and testing;
-- consistent database transactions;
-- lower infrastructure complexity;
-- clear module boundaries that can be extracted later if scaling requires it.
+The MVP features are strongly connected. Authentication, permissions, sharing, and
+diagram persistence benefit from local service calls and consistent PostgreSQL
+transactions. This keeps deployment and debugging simpler without preventing modules
+from being extracted later if scaling requires it.
 
 ## Repository structure
 
 ```text
 apps/
-├── web/          React frontend
-└── api/          NestJS backend
+├── api/          NestJS API
+└── web/          React client
 
 libs/
+├── api-ports/    Backend repository contracts
 └── contracts/    Shared Zod contracts
 
 prisma/
+├── migrations/   Database migrations
 └── schema.prisma
 
-compose.yaml
+compose.yaml      PostgreSQL, Redis, and Mailpit
 ```
 
-The repository is an Nx monorepo containing two applications:
+## Implemented features
 
-- `web` — the React client;
-- `api` — the NestJS modular monolith.
+### Authentication and profile
 
-The shared `contracts` library will contain Zod schemas for HTTP and Socket.IO payloads.
+- registration and email confirmation;
+- verification email resend flow;
+- login, refresh, and logout;
+- authenticated profile retrieval and update;
+- avatar upload;
+- password change.
 
-## Data flow
+### Diagram dashboard
 
-A persistent editor modification will follow this flow:
+- create, rename, duplicate, move, and delete diagrams;
+- create and delete folders;
+- navigate diagrams by folder;
+- share a diagram with another registered user;
+- list diagrams shared with the current user.
+
+### Diagram editor
+
+- rectangle, circle, diamond, triangle, text, sticky-note, container, and image nodes;
+- connector and arrow edges;
+- node movement, resizing, selection, and deletion;
+- copy and paste for selected nodes and their internal edges;
+- diagram image upload;
+- editable node label, colors, border width, opacity, rotation, font, and text alignment;
+- manual save and throttled operation autosave with retry;
+- snapshot restoration after page reload;
+- live collaborative updates without reloading the editor;
+- reconnection synchronization and duplicate-operation protection;
+- local Undo/Redo rebased over remote changes.
+
+## Current editor data flow
 
 ```text
 React Flow interaction
-→ frontend creates an operation
-→ Socket.IO sends the operation
-→ backend validates authentication and permissions
-→ Prisma stores the operation in PostgreSQL
-→ backend broadcasts the accepted operation
-→ connected clients update their canvas
+→ Zustand updates content and queues a field-level operation
+→ autosave batches queued changes, preserving each change and a stable request ID
+→ the React client posts the operation through the REST API
+→ NestJS validates authentication, diagram membership, and the Zod contract
+→ PostgreSQL locks this diagram row and atomically saves operation + snapshot + version
+→ Socket.IO broadcasts the committed operation to all editors, including its author
+→ each editor applies the operation and reapplies its still-pending local changes
+→ reconnection sync repairs version gaps and acknowledges already-committed requests
 ```
 
-Temporary drag previews will be transmitted through Socket.IO but will not be stored for every mouse movement.
+This is a server-ordered MVP protocol, not an offline CRDT.
 
 ## Technology stack
 
 ### Frontend
 
-- React
-- TypeScript
-- React Flow
-- TailwindCSS
-- Zustand
-- React Query
+- React 19;
+- TypeScript;
+- React Flow;
+- Zustand;
+- TanStack Query;
+- Vite;
+- Tailwind CSS;
+- Vitest and Testing Library.
 
 ### Backend
 
-- NestJS
-- Prisma ORM
-- PostgreSQL
-- Redis
-- Socket.IO
-- Zod
+- NestJS;
+- Prisma ORM;
+- PostgreSQL;
+- Redis;
+- Zod;
+- Jest.
 
-### Infrastructure
+### Tooling and local infrastructure
 
-- Nx
-- Docker
-- Docker Compose
-- Nginx
-- GitHub Actions
+- Nx;
+- Docker Compose;
+- Mailpit;
+- ESLint.
 
 ## Local development
 
-Install dependencies:
+### 1. Install dependencies
 
-```powershell
+```bash
 npm install
 ```
 
-Create the local environment file:
+### 2. Configure the environment
 
-```powershell
-Copy-Item .env.example .env
+```bash
+cp .env.example .env
 ```
 
-Start PostgreSQL and Redis:
+Replace the development placeholder secrets before running the API outside an isolated
+local environment.
 
-```powershell
+### 3. Start local infrastructure
+
+Start Docker Desktop, then run:
+
+```bash
 docker compose up -d
 ```
 
-Generate Prisma Client:
+Apply existing migrations and generate Prisma Client:
 
-```powershell
+```bash
+npx prisma migrate deploy
 npx prisma generate
 ```
 
-Start the backend:
+### 4. Start the backend
 
-```powershell
+```bash
 npx nx serve api
 ```
 
-Start the frontend in another terminal:
+The API is available at `http://localhost:3000/api`.
 
-```powershell
+### 5. Start the frontend
+
+In another terminal:
+
+```bash
 npx nx serve web
 ```
 
+The application is available at `http://localhost:4200`.
+
+Development emails are available in Mailpit at `http://localhost:8025`.
+
 ## Verification
 
-Run lint, tests, and production builds:
+Run project verification:
 
-```powershell
-npx nx run-many -t lint test build --all
+```bash
+npx nx run-many -t typecheck lint test build --all
 ```
 
-Validate the Prisma schema:
+Run only the web checks:
 
-```powershell
+```bash
+npx nx typecheck web
+npx nx lint web
+npx nx test web --run
+npx nx build web
+```
+
+Validate Prisma and Docker Compose configuration:
+
+```bash
 npx prisma validate
-```
-
-Validate Docker Compose:
-
-```powershell
 docker compose config
 ```
 
-## Current status
+## Current status and next milestones
 
-The initial project foundation is configured:
+The REST-based MVP workflow is functional: a user can authenticate, organize diagrams,
+edit a diagram, change node properties, save it, and restore it after reload.
 
-- Nx monorepo;
-- React application;
-- NestJS application;
-- shared contracts library;
-- PostgreSQL and Redis containers;
-- Prisma configuration;
-- Zod dependency;
-- lint, tests, and production builds.
+Recommended next milestones:
 
-The next implementation milestone is authentication.
+1. finish editor regression tests and run the complete production build;
+2. verify every mentor requirement against the implemented feature list;
+3. verify collaboration in the deployed frontend/API environment;
+4. optionally add presence cursors and a visual operation-history browser;
+5. add deployment infrastructure and production documentation;
+6. treat inline text editing and other editor shortcuts as post-MVP usability upgrades.
+
+## Upload storage and private diagram images
+
+Uploads accept JPEG, PNG and WebP only (avatars: 2 MB; diagram images: 5 MB).
+The API decodes and re-encodes each image with Sharp, rejects invalid content,
+MIME mismatches, animated files and images above 16 megapixels.
+
+Diagram images are no longer served from the public `/uploads/diagram-images/`
+path. The editor fetches `/api/diagrams/:diagramId/images/:fileName` using its
+access token. Access requires both membership in the diagram and an image
+association with that diagram. The migration backfills associations from saved
+snapshots; duplication preserves those associations. Avatars remain public.
+
+`UPLOADS_ROOT` is the storage directory. Local development uses `uploads`.
+The Render blueprint now configures `/var/data/uploads` on a persistent disk.
+**The API blueprint uses a paid Starter instance because Render does not support
+persistent disks on free web services. This configuration has not been deployed.**
+See https://render.com/docs/disks before activating it.
+
+Before deploying, back up the existing `uploads/avatars` and
+`uploads/diagram-images` directories and copy their contents to the corresponding
+folders on the mounted disk. The SQL migration preserves references, not file
+bytes: it cannot recover files lost by previous ephemeral deploys. Apply migrations
+before starting the updated API (`npx prisma migrate deploy`, already in the
+Render start command). Verify an uploaded image after restarting/redeploying.
+
+The volume approach is intended for this single-instance MVP. Do not enable
+multiple API instances sharing separate local upload directories.
