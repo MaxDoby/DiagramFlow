@@ -1,0 +1,10 @@
+node_modules
+dist
+.nx
+.git
+.env
+.env*
+uploads
+coverage
+*.log
+apps/api/src/generated/prisma
