@@ -2,7 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EditorPage } from './editor-page';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach } from 'vitest';
-import { getDiagram, submitDiagramOperation } from '../api/editor-api';
+import {
+  DiagramApiError,
+  getDiagram,
+  submitDiagramOperation,
+} from '../api/editor-api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../api/editor-api', async (original) => ({
@@ -88,15 +92,26 @@ describe('EditorPage', () => {
   });
 
   it('blocks navigation with unsaved changes and allows explicit discard', async () => {
+    submitDiagramOperationMock.mockRejectedValue(
+      new DiagramApiError(403, 'Access denied'),
+    );
     renderEditor();
     fireEvent.click(
       await screen.findByRole('button', { name: 'Add Rectangle' }),
     );
+    await waitFor(() => {
+      expect(submitDiagramOperationMock).toHaveBeenCalled();
+    });
     const closing = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(closing);
     expect(closing.defaultPrevented).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
     expect(await screen.findByRole('alertdialog')).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Discard and leave' }),
+      ).toHaveProperty('disabled', false);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Discard and leave' }));
     expect(await screen.findByText('Dashboard destination')).toBeTruthy();
   });
