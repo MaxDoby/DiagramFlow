@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DiagramApiError, saveDiagramSnapshot } from '../api/editor-api';
+import {
+  DiagramApiError,
+  submitDiagramOperation,
+  synchronizeDiagram,
+} from '../api/editor-api';
 import { useEditorStore } from '../store/editor-store';
 
-const AUTOSAVE_DELAY_MS = 1_000;
 type DiagramAutosaveOptions = { isLoading: boolean; loadError: string | null };
 
 export const useDiagramAutosave = (
   diagramId: string | undefined,
   { isLoading, loadError }: DiagramAutosaveOptions,
 ) => {
-  const editRevision = useEditorStore((s) => s.editRevision);
+  const pending = useEditorStore((s) => s.pendingOperations);
+  const firstPendingId = pending[0]?.id;
   const isDirty = useEditorStore((s) => s.isDirty);
   const saveError = useEditorStore((s) => s.saveError);
   const hasSaveConflict = useEditorStore((s) => s.hasSaveConflict);
@@ -17,7 +21,7 @@ export const useDiagramAutosave = (
   const [isSaving, setIsSaving] = useState(false);
   const inFlight = useRef(false);
   const active = useRef(false);
-
+  const retryDelay = useRef(100);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -29,12 +33,15 @@ export const useDiagramAutosave = (
     const state = useEditorStore.getState();
     if (
       !diagramId ||
+      !state.pendingOperations.length ||
       isLoading ||
       loadError ||
       inFlight.current ||
       state.hasSaveConflict
     )
       return;
+    const operation = state.prepareOperation();
+    if (!operation) return;
     const savedSession = state.sessionId;
     const isCurrent = () =>
       active.current && useEditorStore.getState().sessionId === savedSession;
@@ -42,20 +49,44 @@ export const useDiagramAutosave = (
     setIsSaving(true);
     state.setSaveError(null);
     try {
-      const result = await saveDiagramSnapshot(diagramId, {
-        snapshot: {
-          nodes: state.nodes,
-          edges: state.edges,
-          viewport: state.viewport,
-        },
-        expectedVersion: state.diagramVersion,
-      });
-      if (isCurrent()) state.markSaved(result.version, state.editRevision);
+      const event = await submitDiagramOperation(diagramId, operation);
+      if (isCurrent()) {
+        const current = useEditorStore.getState();
+        const sequential = current.receiveOperation(event);
+        if (
+          !sequential ||
+          useEditorStore
+            .getState()
+            .pendingOperations.some((op) => op.id === operation.id)
+        ) {
+          const response = await synchronizeDiagram(
+            diagramId,
+            useEditorStore.getState().pendingOperations.map((op) => op.id),
+          );
+          if (isCurrent()) useEditorStore.getState().reconcile(response);
+        }
+      }
+      retryDelay.current = 100;
     } catch (error: unknown) {
       if (isCurrent()) {
-        if (error instanceof DiagramApiError && error.status === 409)
-          state.setSaveConflict();
-        else state.setSaveError('Unable to save the diagram');
+        retryDelay.current = Math.min(
+          Math.max(retryDelay.current * 2, 1000),
+          10000,
+        );
+        if (
+          error instanceof DiagramApiError &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          ![408, 425, 429].includes(error.status)
+        ) {
+          useEditorStore.setState({ hasSaveConflict: true });
+          state.setSaveError(
+            'The operation was rejected. Keep this page open and check your access.',
+          );
+        } else
+          state.setSaveError(
+            'Connection interrupted. Changes will be retried automatically.',
+          );
       }
     } finally {
       inFlight.current = false;
@@ -66,27 +97,24 @@ export const useDiagramAutosave = (
   useEffect(() => {
     if (
       !diagramId ||
-      !isDirty ||
+      !firstPendingId ||
       isLoading ||
       isSaving ||
       loadError ||
-      saveError ||
       hasSaveConflict
     )
       return;
-    const timeoutId = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       void save();
-    }, AUTOSAVE_DELAY_MS);
-    return () => window.clearTimeout(timeoutId);
+    }, retryDelay.current);
+    return () => window.clearTimeout(timer);
   }, [
     diagramId,
-    editRevision,
+    firstPendingId,
     sessionId,
-    isDirty,
     isLoading,
     isSaving,
     loadError,
-    saveError,
     hasSaveConflict,
     save,
   ]);

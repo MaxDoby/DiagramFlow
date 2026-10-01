@@ -17,6 +17,8 @@ describe('DiagramService', () => {
 
   beforeEach(() => {
     diagramRepositoryMock = {
+      applyOperation: jest.fn(),
+      syncOperations: jest.fn(),
       createForOwner: jest.fn(),
       findAllForOwner: jest.fn(),
       findByIdForOwner: jest.fn(),

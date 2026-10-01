@@ -36,6 +36,11 @@ import {
   DiagramOwnerCannotBeCollaboratorError,
 } from './errors/diagram.error';
 import { DiagramImageStorageService } from './image/diagram-image-storage.service';
+import {
+  diagramOperationEventSchema,
+  diagramSyncResponseSchema,
+  type DiagramOperation,
+} from '@diagram-flow/contracts';
 
 const DIAGRAM_NAME_MAX_LENGTH = 150;
 const DUPLICATE_NAME_SUFFIX = ' copy';
@@ -60,6 +65,57 @@ export class DiagramService {
     private readonly diagramRepository: DiagramRepositoryPort,
     private readonly diagramImageStorage: DiagramImageStorageService,
   ) {}
+
+  async applyOperation(
+    userId: string,
+    diagramId: string,
+    operation: DiagramOperation,
+  ) {
+    try {
+      const record = await this.diagramRepository.applyOperation({
+        userId,
+        diagramId,
+        operation,
+      });
+      return diagramOperationEventSchema.parse({
+        id: record.id,
+        diagramId,
+        userId: record.userId,
+        version: record.version,
+        changes: record.payload,
+      });
+    } catch (error) {
+      if (error instanceof DiagramNotFoundError)
+        throw new NotFoundException('Diagram not found');
+      if (error instanceof DiagramImageUnavailableError)
+        throw new BadRequestException(error.message);
+      if (error instanceof DiagramVersionConflictError)
+        throw new ConflictException(
+          'Operation ID was already used for a different operation',
+        );
+      throw error;
+    }
+  }
+
+  async syncOperations(
+    userId: string,
+    diagramId: string,
+    pendingIds: string[],
+  ) {
+    try {
+      return diagramSyncResponseSchema.parse(
+        await this.diagramRepository.syncOperations({
+          userId,
+          diagramId,
+          pendingIds,
+        }),
+      );
+    } catch (error) {
+      if (error instanceof DiagramNotFoundError)
+        throw new NotFoundException('Diagram not found');
+      throw error;
+    }
+  }
 
   async createDiagram(userId: string, input: CreateDiagramInput) {
     try {

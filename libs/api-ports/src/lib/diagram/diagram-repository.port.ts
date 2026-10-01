@@ -10,6 +10,10 @@ export type DiagramRecord = {
 };
 
 export interface DiagramRepositoryPort {
+  applyOperation(
+    input: ApplyDiagramOperationInput,
+  ): Promise<DiagramOperationRecord>;
+  syncOperations(input: SyncDiagramOperationsInput): Promise<DiagramSyncRecord>;
   createForOwner(input: CreateDiagramRepositoryInput): Promise<DiagramRecord>;
   findAllForOwner(
     input: FindAllDiagramsRepositoryInput,
@@ -30,6 +34,29 @@ export interface DiagramRepositoryPort {
   ): Promise<DiagramRecord[]>;
   deleteForOwner(input: DeleteDiagramRepositoryInput): Promise<void>;
 }
+
+export type ApplyDiagramOperationInput = {
+  userId: string;
+  diagramId: string;
+  operation: unknown;
+};
+export type DiagramOperationRecord = {
+  id: string;
+  diagramId: string;
+  userId: string | null;
+  version: number;
+  payload: unknown;
+};
+export type SyncDiagramOperationsInput = {
+  userId: string;
+  diagramId: string;
+  pendingIds: string[];
+};
+export type DiagramSyncRecord = {
+  snapshot: unknown;
+  version: number;
+  acknowledgedIds: string[];
+};
 
 export type DiagramDetailsRecord = DiagramRecord & {
   snapshot: unknown;

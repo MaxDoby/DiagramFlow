@@ -1,4 +1,7 @@
 import {
+  diagramOperationEventSchema,
+  diagramSyncResponseSchema,
+  type DiagramOperation,
   diagramDetailsResponseSchema,
   type DiagramDetailsResponse,
   type SaveDiagramSnapshotInput,
@@ -19,6 +22,39 @@ export class DiagramApiError extends Error {
     this.name = DiagramApiError.name;
   }
 }
+
+export const submitDiagramOperation = async (
+  diagramId: string,
+  operation: DiagramOperation,
+) => {
+  const response = await apiRequest(`/api/diagrams/${diagramId}/operations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(operation),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok)
+    throw new DiagramApiError(response.status, 'Unable to save the operation');
+  return diagramOperationEventSchema.parse(await response.json());
+};
+
+export const synchronizeDiagram = async (
+  diagramId: string,
+  pendingIds: string[],
+) => {
+  const response = await apiRequest(`/api/diagrams/${diagramId}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pendingIds: pendingIds.slice(0, 500) }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok)
+    throw new DiagramApiError(
+      response.status,
+      'Unable to synchronize the diagram',
+    );
+  return diagramSyncResponseSchema.parse(await response.json());
+};
 
 export const getDiagram = async (
   diagramId: string,

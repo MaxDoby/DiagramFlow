@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { isDeepStrictEqual } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import {
   CreateDiagramRepositoryInput,
@@ -26,10 +28,120 @@ import {
 } from './errors/diagram.error';
 import { Prisma } from '../../../generated/prisma/client';
 import { diagramImageFileNames } from './image/diagram-image-references';
+import {
+  applyDiagramChanges,
+  diffDiagramSnapshots,
+  persistentDiagramSnapshot,
+  diagramOperationSchema,
+  diagramSnapshotSchema,
+} from '@diagram-flow/contracts';
+import type {
+  ApplyDiagramOperationInput,
+  SyncDiagramOperationsInput,
+} from '@diagram-flow/api-ports';
 
 @Injectable()
 export class PrismaDiagramRepository implements DiagramRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
+
+  async applyOperation({
+    userId,
+    diagramId,
+    operation,
+  }: ApplyDiagramOperationInput) {
+    const input = diagramOperationSchema.parse(operation);
+    return this.prisma
+      .$transaction(async (tx) => {
+        // A row lock serializes all editors of this diagram, including across API instances.
+        await tx.$queryRaw`SELECT id FROM diagrams WHERE id = ${diagramId}::uuid FOR UPDATE`;
+        const diagram = await tx.diagram.findUnique({
+          where: {
+            id: diagramId,
+            OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
+          },
+        });
+        if (!diagram) throw new DiagramNotFoundError();
+        const existing = await tx.diagramOperation.findUnique({
+          where: { id: input.id },
+        });
+        if (existing) {
+          if (
+            existing.diagramId !== diagramId ||
+            existing.userId !== userId ||
+            !isDeepStrictEqual(
+              existing.payload,
+              JSON.parse(JSON.stringify(input.changes)),
+            )
+          )
+            throw new DiagramVersionConflictError();
+          return existing;
+        }
+        const snapshot = persistentDiagramSnapshot(
+          applyDiagramChanges(
+            diagramSnapshotSchema.parse(diagram.snapshot),
+            input.changes,
+          ),
+        );
+        const fileNames = diagramImageFileNames(snapshot);
+        if (
+          fileNames.length &&
+          (await tx.diagramImage.count({
+            where: { diagramId, fileName: { in: fileNames } },
+          })) !== fileNames.length
+        )
+          throw new DiagramImageUnavailableError();
+        const saved = await tx.diagram.update({
+          where: { id: diagramId },
+          data: {
+            snapshot: snapshot as Prisma.InputJsonValue,
+            version: { increment: 1 },
+          },
+        });
+        return tx.diagramOperation.create({
+          data: {
+            id: input.id,
+            diagramId,
+            userId,
+            version: saved.version,
+            payload: input.changes as Prisma.InputJsonValue,
+          },
+        });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        )
+          throw new DiagramVersionConflictError();
+        throw error;
+      });
+  }
+
+  async syncOperations({
+    userId,
+    diagramId,
+    pendingIds,
+  }: SyncDiagramOperationsInput) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM diagrams WHERE id = ${diagramId}::uuid FOR SHARE`;
+      const diagram = await tx.diagram.findUnique({
+        where: {
+          id: diagramId,
+          OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
+        },
+        select: { snapshot: true, version: true },
+      });
+      if (!diagram) throw new DiagramNotFoundError();
+      const receipts = await tx.diagramOperation.findMany({
+        where: { diagramId, userId, id: { in: pendingIds } },
+        select: { id: true },
+      });
+      return {
+        ...diagram,
+        acknowledgedIds: receipts.map((receipt) => receipt.id),
+      };
+    });
+  }
 
   async createForOwner({
     ownerId,
@@ -138,56 +250,38 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
     snapshot,
     expectedVersion,
   }: SaveDiagramSnapshotRepositoryInput): Promise<SaveDiagramSnapshotRecord> {
-    const fileNames = diagramImageFileNames(snapshot);
-    if (fileNames.length > 0) {
-      const accessibleImages = await this.prisma.diagramImage.count({
-        where: {
-          diagramId,
-          fileName: { in: fileNames },
-          diagram: {
-            OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
-          },
-        },
-      });
-      if (accessibleImages !== fileNames.length) {
-        throw new DiagramImageUnavailableError();
-      }
-    }
-    try {
-      return await this.prisma.diagram.update({
+    // Compatibility for existing clients: their snapshot replacement is also logged.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM diagrams WHERE id = ${diagramId}::uuid FOR UPDATE`;
+      const previous = await tx.diagram.findUnique({
         where: {
           id: diagramId,
-          OR: [
-            {
-              ownerId: userId,
-            },
-            {
-              collaborators: {
-                some: {
-                  userId,
-                },
-              },
-            },
-          ],
-          version: expectedVersion,
-        },
-        data: {
-          snapshot: snapshot as Prisma.InputJsonValue,
-          version: {
-            increment: 1,
-          },
-        },
-        select: {
-          version: true,
-          updatedAt: true,
+          OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
         },
       });
-    } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        const diagram = await this.prisma.diagram.findUnique({
+      if (!previous) throw new DiagramNotFoundError();
+      if (previous.version !== expectedVersion)
+        throw new DiagramVersionConflictError();
+      const fileNames = diagramImageFileNames(snapshot);
+      if (fileNames.length > 0) {
+        const accessibleImages = await tx.diagramImage.count({
+          where: {
+            diagramId,
+            fileName: { in: fileNames },
+            diagram: {
+              OR: [
+                { ownerId: userId },
+                { collaborators: { some: { userId } } },
+              ],
+            },
+          },
+        });
+        if (accessibleImages !== fileNames.length) {
+          throw new DiagramImageUnavailableError();
+        }
+      }
+      try {
+        const saved = await tx.diagram.update({
           where: {
             id: diagramId,
             OR: [
@@ -202,18 +296,65 @@ export class PrismaDiagramRepository implements DiagramRepositoryPort {
                 },
               },
             ],
+            version: expectedVersion,
+          },
+          data: {
+            snapshot: snapshot as Prisma.InputJsonValue,
+            version: {
+              increment: 1,
+            },
           },
           select: {
-            id: true,
+            version: true,
+            updatedAt: true,
           },
         });
-        if (!diagram) {
-          throw new DiagramNotFoundError();
+        await tx.diagramOperation.create({
+          data: {
+            id: randomUUID(),
+            diagramId,
+            userId,
+            version: saved.version,
+            payload: diffDiagramSnapshots(
+              diagramSnapshotSchema.parse(previous.snapshot),
+              diagramSnapshotSchema.parse(snapshot),
+            ) as Prisma.InputJsonValue,
+          },
+        });
+        return saved;
+      } catch (error: unknown) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2025'
+        ) {
+          const diagram = await tx.diagram.findUnique({
+            where: {
+              id: diagramId,
+              OR: [
+                {
+                  ownerId: userId,
+                },
+                {
+                  collaborators: {
+                    some: {
+                      userId,
+                    },
+                  },
+                },
+              ],
+            },
+            select: {
+              id: true,
+            },
+          });
+          if (!diagram) {
+            throw new DiagramNotFoundError();
+          }
+          throw new DiagramVersionConflictError();
         }
-        throw new DiagramVersionConflictError();
+        throw error;
       }
-      throw error;
-    }
+    });
   }
 
   async deleteForOwner({

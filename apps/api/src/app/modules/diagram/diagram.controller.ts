@@ -43,6 +43,12 @@ import {
   type UploadDiagramImageResponse,
 } from '@diagram-flow/contracts';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  diagramOperationSchema,
+  diagramSyncInputSchema,
+  type DiagramOperation,
+  type DiagramSyncInput,
+} from '@diagram-flow/contracts';
 
 @Controller('diagrams')
 @UseGuards(AccessTokenGuard)
@@ -51,6 +57,36 @@ export class DiagramController {
     private readonly diagramService: DiagramService,
     private readonly diagramRealTimeGateway: DiagramRealtimeGateway,
   ) {}
+
+  @Post(':diagramId/operations')
+  async applyOperation(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(diagramOperationSchema))
+    input: DiagramOperation,
+  ) {
+    const event = await this.diagramService.applyOperation(
+      user.sub,
+      params.diagramId,
+      input,
+    );
+    this.diagramRealTimeGateway.publishOperation(event);
+    return event;
+  }
+
+  @Post(':diagramId/sync')
+  syncOperations(
+    @CurrentUser() user: AccessTokenPayload,
+    @Param(new ZodValidationPipe(diagramParamsSchema)) params: DiagramParams,
+    @Body(new ZodValidationPipe(diagramSyncInputSchema))
+    input: DiagramSyncInput,
+  ) {
+    return this.diagramService.syncOperations(
+      user.sub,
+      params.diagramId,
+      input.pendingIds,
+    );
+  }
 
   @Get()
   listDiagrams(

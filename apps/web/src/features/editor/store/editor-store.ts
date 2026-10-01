@@ -1,4 +1,10 @@
 import {
+  applyDiagramChanges,
+  diffDiagramSnapshots,
+  persistentDiagramSnapshot,
+  type DiagramOperation,
+  type DiagramOperationEvent,
+  type DiagramSyncResponse,
   type DiagramConnectionType,
   type DiagramSnapshot,
   type DiagramShapeType,
@@ -75,6 +81,12 @@ type EditorStore = {
   clipboard: EditorClipboard | null;
   viewport: Viewport;
   sessionId: string;
+  confirmedSnapshot: DiagramSnapshot;
+  pendingOperations: DiagramOperation[];
+  outgoingOperationId: string | null;
+  prepareOperation: () => DiagramOperation | undefined;
+  receiveOperation: (event: DiagramOperationEvent) => boolean;
+  reconcile: (response: DiagramSyncResponse) => void;
   hasSaveConflict: boolean;
   diagramVersion: number;
   editRevision: number;
@@ -101,9 +113,7 @@ type EditorStore = {
   setActiveConnectionType: (connectionType: DiagramConnectionType) => void;
   copySelection: () => void;
   pasteClipboard: () => void;
-  markSaved: (version: number, savedRevision: number) => void;
   setSaveError: (message: string | null) => void;
-  setSaveConflict: () => void;
 };
 
 export const MIN_NODE_WIDTH = 60;
@@ -257,7 +267,7 @@ const dirtyState = (state: EditorStore) => ({
   saveError: state.hasSaveConflict ? state.saveError : null,
 });
 
-export const useEditorStore = create<EditorStore>((set) => ({
+export const useEditorStore = create<EditorStore>((set, get) => ({
   nodes: [],
   edges: [],
   undoStack: [],
@@ -266,6 +276,129 @@ export const useEditorStore = create<EditorStore>((set) => ({
   clipboard: null,
   viewport: cleanViewport,
   sessionId: crypto.randomUUID(),
+  confirmedSnapshot: { nodes: [], edges: [], viewport: cleanViewport },
+  pendingOperations: [],
+  outgoingOperationId: null,
+  prepareOperation: () => {
+    const state = get();
+    const first = state.pendingOperations[0];
+    if (!first || state.outgoingOperationId) return first;
+    const changes = [...first.changes];
+    let count = 1;
+    for (const next of state.pendingOperations.slice(1)) {
+      if (changes.length + next.changes.length > 1000) break;
+      changes.push(...next.changes);
+      count++;
+    }
+    const operation = { id: first.id, changes };
+    set({
+      outgoingOperationId: first.id,
+      pendingOperations: [operation, ...state.pendingOperations.slice(count)],
+    });
+    return operation;
+  },
+  receiveOperation: (event) => {
+    let accepted = true;
+    set((state) => {
+      if (event.version <= state.diagramVersion) return state;
+      if (event.version !== state.diagramVersion + 1) {
+        accepted = false;
+        return state;
+      }
+      const own = state.pendingOperations.some((op) => op.id === event.id);
+      const pendingOperations = state.pendingOperations.filter(
+        (op) => op.id !== event.id,
+      );
+      const confirmedSnapshot = applyDiagramChanges(
+        state.confirmedSnapshot,
+        event.changes,
+      );
+      const visible = pendingOperations.reduce(
+        (snapshot, op) => applyDiagramChanges(snapshot, op.changes),
+        confirmedSnapshot,
+      );
+      const rebase = (snapshot: EditorHistorySnapshot) =>
+        applyDiagramChanges(
+          { ...snapshot, viewport: state.viewport },
+          event.changes,
+        );
+      return {
+        nodes: visible.nodes.map((node) => ({
+          ...node,
+          selected:
+            state.nodes.find((n) => n.id === node.id)?.selected ?? false,
+        })),
+        edges: visible.edges,
+        confirmedSnapshot,
+        pendingOperations,
+        outgoingOperationId:
+          state.outgoingOperationId === event.id
+            ? null
+            : state.outgoingOperationId,
+        diagramVersion: event.version,
+        isDirty: pendingOperations.length > 0,
+        ...(!own
+          ? {
+              undoStack: state.undoStack.map(rebase),
+              redoStack: state.redoStack.map(rebase),
+              pendingContentSnapshot: state.pendingContentSnapshot
+                ? rebase(state.pendingContentSnapshot)
+                : null,
+            }
+          : {}),
+      };
+    });
+    return accepted;
+  },
+  reconcile: (response) =>
+    set((state) => {
+      if (response.version < state.diagramVersion) return state;
+      const acknowledged = new Set(response.acknowledgedIds);
+      const ownConfirmed = state.pendingOperations
+        .filter((op) => acknowledged.has(op.id))
+        .reduce(
+          (snapshot, op) => applyDiagramChanges(snapshot, op.changes),
+          state.confirmedSnapshot,
+        );
+      const remoteChanges = diffDiagramSnapshots(
+        ownConfirmed,
+        response.snapshot,
+      );
+      const pendingOperations = state.pendingOperations.filter(
+        (op) => !acknowledged.has(op.id),
+      );
+      const visible = pendingOperations.reduce(
+        (snapshot, op) => applyDiagramChanges(snapshot, op.changes),
+        response.snapshot,
+      );
+      const rebase = (snapshot: EditorHistorySnapshot) =>
+        applyDiagramChanges(
+          { ...snapshot, viewport: state.viewport },
+          remoteChanges,
+        );
+      return {
+        nodes: visible.nodes.map((node) => ({
+          ...node,
+          selected:
+            state.nodes.find((n) => n.id === node.id)?.selected ?? false,
+        })),
+        edges: visible.edges,
+        confirmedSnapshot: response.snapshot,
+        pendingOperations,
+        outgoingOperationId:
+          state.outgoingOperationId &&
+          acknowledged.has(state.outgoingOperationId)
+            ? null
+            : state.outgoingOperationId,
+        diagramVersion: response.version,
+        isDirty: pendingOperations.length > 0,
+        undoStack: state.undoStack.map(rebase),
+        redoStack: state.redoStack.map(rebase),
+        pendingContentSnapshot: state.pendingContentSnapshot
+          ? rebase(state.pendingContentSnapshot)
+          : null,
+      };
+    }),
   hasSaveConflict: false,
   diagramVersion: 0,
   editRevision: 0,
@@ -276,6 +409,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
   hydrate: (snapshot, version) =>
     set({
       sessionId: crypto.randomUUID(),
+      confirmedSnapshot: persistentDiagramSnapshot(snapshot),
+      pendingOperations: [],
+      outgoingOperationId: null,
       hasSaveConflict: false,
       clipboard: null,
       nodes: snapshot.nodes,
@@ -406,11 +542,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
       ...dirtyState(state),
     })),
 
-  onMoveEnd: (event, viewport) =>
-    set((state) => ({
-      viewport,
-      ...(event ? dirtyState(state) : {}),
-    })),
+  onMoveEnd: (_event, viewport) => set({ viewport }),
 
   addNode: (shapeType) =>
     set((state) => ({
@@ -610,16 +742,33 @@ export const useEditorStore = create<EditorStore>((set) => ({
       };
     }),
 
-  markSaved: (version, savedRevision) =>
-    set((state) => ({
-      diagramVersion: version,
-      ...(state.editRevision === savedRevision ? { isDirty: false } : {}),
-    })),
-
   setSaveError: (saveError) => set({ saveError }),
-  setSaveConflict: () =>
-    set({
-      hasSaveConflict: true,
-      saveError: 'The diagram changed elsewhere. Reload before saving.',
-    }),
 }));
+
+// UI selection and camera changes are local; only content becomes an operation.
+useEditorStore.subscribe((state, previous) => {
+  if (
+    state.sessionId !== previous.sessionId ||
+    state.editRevision === previous.editRevision
+  )
+    return;
+  const changes = diffDiagramSnapshots(
+    {
+      nodes: previous.nodes,
+      edges: previous.edges,
+      viewport: previous.viewport,
+    },
+    { nodes: state.nodes, edges: state.edges, viewport: state.viewport },
+  );
+  const operations: DiagramOperation[] = [];
+  for (let index = 0; index < changes.length; index += 500) {
+    operations.push({
+      id: crypto.randomUUID(),
+      changes: changes.slice(index, index + 500),
+    });
+  }
+  useEditorStore.setState({
+    pendingOperations: [...state.pendingOperations, ...operations],
+    isDirty: state.pendingOperations.length + operations.length > 0,
+  });
+});

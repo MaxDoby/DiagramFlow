@@ -2,16 +2,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EditorPage } from './editor-page';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach } from 'vitest';
-import { getDiagram, saveDiagramSnapshot } from '../api/editor-api';
+import { getDiagram, submitDiagramOperation } from '../api/editor-api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-vi.mock('../api/editor-api', () => ({
+vi.mock('../api/editor-api', async (original) => ({
+  ...(await original<typeof import('../api/editor-api')>()),
   getDiagram: vi.fn(),
-  saveDiagramSnapshot: vi.fn(),
+  submitDiagramOperation: vi.fn(),
 }));
 
 const getDiagramMock = vi.mocked(getDiagram);
-const saveDiagramSnapshotMock = vi.mocked(saveDiagramSnapshot);
+const submitDiagramOperationMock = vi.mocked(submitDiagramOperation);
 
 const diagramId = '22222222-2222-4222-8222-222222222222';
 const timestamp = '2030-01-01T12:00:00.000Z';
@@ -64,11 +65,14 @@ describe('EditorPage', () => {
   beforeEach(() => {
     getDiagramMock.mockReset();
     getDiagramMock.mockResolvedValue(diagramResponse);
-    saveDiagramSnapshotMock.mockReset();
-    saveDiagramSnapshotMock.mockResolvedValue({
-      version: 1,
-      updatedAt: timestamp,
-    });
+    submitDiagramOperationMock.mockReset();
+    // Keep edits pending in UI-only tests until a test explicitly acknowledges them.
+    submitDiagramOperationMock.mockImplementation(
+      () =>
+        new Promise(() => {
+          /* Deliberately pending until this test ends. */
+        }),
+    );
   });
 
   it('should add a node to the canvas', async () => {
@@ -150,9 +154,18 @@ describe('EditorPage', () => {
     ).toBeNull();
   });
 
-  it('should use the latest version when saving the snapshot', async () => {
+  it('sends a content operation instead of replacing the shared snapshot', async () => {
+    submitDiagramOperationMock.mockImplementation(async (id, operation) => ({
+      ...operation,
+      diagramId: id,
+      userId: null,
+      version: 1,
+    }));
     renderEditor();
 
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Add Rectangle' }),
+    );
     const firstSaveButton = await screen.findByRole('button', {
       name: 'Save',
     });
@@ -160,10 +173,13 @@ describe('EditorPage', () => {
     fireEvent.click(firstSaveButton);
 
     await waitFor(() => {
-      expect(saveDiagramSnapshotMock).toHaveBeenNthCalledWith(1, diagramId, {
-        snapshot: diagramResponse.snapshot,
-        expectedVersion: 0,
-      });
+      expect(submitDiagramOperationMock).toHaveBeenCalledWith(
+        diagramId,
+        expect.objectContaining({
+          id: expect.any(String),
+          changes: [expect.objectContaining({ type: 'node.add' })],
+        }),
+      );
     });
 
     const secondSaveButton = await screen.findByRole('button', {
@@ -173,10 +189,7 @@ describe('EditorPage', () => {
     fireEvent.click(secondSaveButton);
 
     await waitFor(() => {
-      expect(saveDiagramSnapshotMock).toHaveBeenNthCalledWith(2, diagramId, {
-        snapshot: diagramResponse.snapshot,
-        expectedVersion: 1,
-      });
+      expect(submitDiagramOperationMock).toHaveBeenCalledTimes(1);
     });
   });
 });

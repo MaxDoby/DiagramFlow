@@ -7,6 +7,9 @@ import {
 } from './errors/diagram.error';
 
 type PrismaServiceMock = {
+  $transaction: jest.Mock;
+  $queryRaw: jest.Mock;
+  diagramOperation: { create: jest.Mock };
   diagram: {
     update: jest.Mock;
     findUnique: jest.Mock;
@@ -19,9 +22,12 @@ describe('PrismaDiagramRepository', () => {
 
   beforeEach(() => {
     prismaServiceMock = {
+      $transaction: jest.fn((callback) => callback(prismaServiceMock)),
+      $queryRaw: jest.fn(),
+      diagramOperation: { create: jest.fn() },
       diagram: {
         update: jest.fn(),
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ version: 0, snapshot: {} }),
       },
     };
 
@@ -114,9 +120,6 @@ describe('PrismaDiagramRepository', () => {
       where: {
         id: diagramId,
         OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }],
-      },
-      select: {
-        id: true,
       },
     });
   });

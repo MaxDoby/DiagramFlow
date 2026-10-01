@@ -3,9 +3,9 @@
 DiagramFlow is an Nx monorepo for creating, editing, organizing, and sharing diagrams.
 
 The current MVP includes authentication, profile management, folders, diagram sharing,
-an interactive React Flow editor, image uploads, and versioned snapshot autosave.
-Real-time collaboration and operation history remain planned milestones and are not yet
-implemented.
+an interactive React Flow editor, image uploads, persisted content operations,
+autosave, and real-time collaboration. Presence cursors and a visual history browser
+are not implemented.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ DiagramFlow uses a modular monolith architecture:
 - `apps/api` contains the NestJS backend;
 - `libs/contracts` contains shared Zod request and response contracts;
 - `libs/api-ports` contains backend repository ports;
-- PostgreSQL stores application data and diagram snapshots;
+- PostgreSQL stores application data, diagram snapshots, and the ordered operation log;
 - Redis supports short-lived infrastructure concerns such as email verification;
 - Mailpit receives development emails locally.
 
@@ -80,25 +80,27 @@ compose.yaml      PostgreSQL, Redis, and Mailpit
 - copy and paste for selected nodes and their internal edges;
 - diagram image upload;
 - editable node label, colors, border width, opacity, rotation, font, and text alignment;
-- manual save and debounced autosave;
+- manual save and throttled operation autosave with retry;
 - snapshot restoration after page reload;
-- optimistic version checks that reject conflicting saves.
+- live collaborative updates without reloading the editor;
+- reconnection synchronization and duplicate-operation protection;
+- local Undo/Redo rebased over remote changes.
 
 ## Current editor data flow
 
 ```text
 React Flow interaction
-→ Zustand updates nodes, edges, or viewport
-→ the editor marks the snapshot as dirty
-→ autosave waits 1 second after the latest change
-→ the React client sends the complete snapshot through the REST API
-→ the NestJS API validates authentication, access, input, and expected version
-→ Prisma stores the snapshot and increments its version
-→ reloading the editor hydrates Zustand from the stored snapshot
+→ Zustand updates content and queues a field-level operation
+→ autosave batches queued changes, preserving each change and a stable request ID
+→ the React client posts the operation through the REST API
+→ NestJS validates authentication, diagram membership, and the Zod contract
+→ PostgreSQL locks this diagram row and atomically saves operation + snapshot + version
+→ Socket.IO broadcasts the committed operation to all editors, including its author
+→ each editor applies the operation and reapplies its still-pending local changes
+→ reconnection sync repairs version gaps and acknowledges already-committed requests
 ```
 
-Real-time Socket.IO operations, presence, and history are intentionally documented as
-future milestones rather than current behavior.
+This is a server-ordered MVP protocol, not an offline CRDT.
 
 ## Technology stack
 
@@ -214,8 +216,8 @@ Recommended next milestones:
 
 1. finish editor regression tests and run the complete production build;
 2. verify every mentor requirement against the implemented feature list;
-3. implement real-time collaboration only if it is required for the MVP;
-4. add operation history after the collaboration contract is stable;
+3. verify collaboration in the deployed frontend/API environment;
+4. optionally add presence cursors and a visual operation-history browser;
 5. add deployment infrastructure and production documentation;
 6. treat inline text editing and other editor shortcuts as post-MVP usability upgrades.
 

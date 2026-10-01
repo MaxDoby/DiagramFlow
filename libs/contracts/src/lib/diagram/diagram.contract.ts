@@ -60,7 +60,7 @@ const diagramColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const diagramFontFamilySchema = z.enum(['sans', 'serif', 'mono']);
 const diagramTextAlignmentSchema = z.enum(['left', 'center', 'right']);
 
-const diagramNodeDataSchema = z
+export const diagramNodeDataSchema = z
   .object({
     label: z.string(),
     shapeType: diagramShapeTypeSchema,
@@ -75,7 +75,7 @@ const diagramNodeDataSchema = z
   })
   .catchall(z.json());
 
-const diagramNodeSchema = z
+export const diagramNodeSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('shape'),
@@ -96,7 +96,7 @@ const diagramEdgeDataSchema = z
   })
   .catchall(z.json());
 
-const diagramEdgeSchema = z
+export const diagramEdgeSchema = z
   .object({
     id: z.string().min(1),
     type: z.enum(['default', 'straight']).optional(),

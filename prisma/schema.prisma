@@ -27,6 +27,7 @@ model User {
   folders               Folder[]
   diagrams              Diagram[]
   diagramCollaborations DiagramCollaborator[]
+  operations            DiagramOperation[]
 
   @@map("users")
 }
@@ -72,6 +73,7 @@ model Diagram {
   folder        Folder?               @relation(fields: [folderId], references: [id], onDelete: SetNull)
   collaborators DiagramCollaborator[]
   images        DiagramImage[]
+  operations    DiagramOperation[]
 
   @@index([ownerId, updatedAt])
   @@index([folderId])
@@ -99,4 +101,18 @@ model DiagramImage {
 
   @@id([diagramId, fileName])
   @@map("diagram_images")
+}
+
+model DiagramOperation {
+  id        String   @id @db.Uuid
+  diagramId String   @map("diagram_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  version   Int
+  payload   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  diagram   Diagram  @relation(fields: [diagramId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([diagramId, version])
+  @@map("diagram_operations")
 }
